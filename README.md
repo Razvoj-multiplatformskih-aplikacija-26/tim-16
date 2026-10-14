@@ -1,4 +1,6 @@
 # tim-16
+Sava Arsenijevic 79/24/SI - git:egkngm
+Mateja Matic 103/24/SI - git:mmatic161
 Svežko (platforma za domaće proizvode) - Aplikacija za prodaju lokalnih poljoprivrednih i domaćih proizvoda u kojoj proizvođači objavljuju proizvode, određuju cene i dostupne količine, korisnici pretražuju i poručuju proizvode, dok proizvođači upravljaju porudžbinama, zalihama i isporukama.
 vežko je aplikacija za prodaju lokalnih poljoprivrednih i domaćih proizvoda koja povezuje lokalne proizvođače sa kupcima. Proizvođači mogu da objavljuju proizvode, određuju cene i dostupne količine, dok korisnici mogu da pretražuju ponudu, poručuju proizvode i prate status svojih porudžbina. Proizvođači upravljaju porudžbinama, zalihama i isporukama.
 
