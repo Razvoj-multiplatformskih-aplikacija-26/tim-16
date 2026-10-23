@@ -1,94 +1,121 @@
-# tim-16
-Sava Arsenijevic 79/24/SI - git:egkngm
-Mateja Matic 103/24/SI - git:mmatic161
-Svežko (platforma za domaće proizvode) - Aplikacija za prodaju lokalnih poljoprivrednih i domaćih proizvoda u kojoj proizvođači objavljuju proizvode, određuju cene i dostupne količine, korisnici pretražuju i poručuju proizvode, dok proizvođači upravljaju porudžbinama, zalihama i isporukama.
-vežko je aplikacija za prodaju lokalnih poljoprivrednih i domaćih proizvoda koja povezuje lokalne proizvođače sa kupcima. Proizvođači mogu da objavljuju proizvode, određuju cene i dostupne količine, dok korisnici mogu da pretražuju ponudu, poručuju proizvode i prate status svojih porudžbina. Proizvođači upravljaju porudžbinama, zalihama i isporukama.
+# Svežko — Platforma za domaće proizvode
 
-Cilj aplikacije je da olakša prodaju domaćih proizvoda, omogući kupcima jednostavan pristup lokalnoj ponudi i unapredi komunikaciju između kupaca i proizvođača.
+Svežko je multiplatformska aplikacija za prodaju lokalnih poljoprivrednih i domaćih proizvoda koja povezuje lokalne proizvođače sa kupcima. Proizvođači objavljuju proizvode, određuju cene i dostupne količine, obrađuju porudžbine i organizuju isporuku, dok kupci pretražuju ponudu, poručuju proizvode i prate status svojih porudžbina.
 
-Obrazloženje ispunjenosti šest zahteva
-1. Uloge
+Cilj aplikacije je da olakša prodaju domaćih proizvoda, omogući kupcima jednostavan pristup lokalnoj ponudi i unapredi saradnju između kupaca i proizvođača.
 
-Sistem sadrži najmanje dve korisničke uloge sa različitim ovlašćenjima:
 
-Kupac – pregleda javnu ponudu, pretražuje proizvode, dodaje ih u korpu, kreira porudžbine i prati njihov status.
-Proizvođač – objavljuje i uređuje proizvode, određuje cene i dostupne količine, pregleda primljene porudžbine, menja njihov status i upravlja isporukama.
+## Tim
 
-Svaki korisnik može da obavlja samo operacije koje odgovaraju njegovoj ulozi. Na primer, kupac ne može da menja cenu proizvoda drugog proizvođača, dok proizvođač ne može da menja porudžbine koje mu ne pripadaju.
+| Ime i prezime | Broj indeksa | GitHub nalog |
+|---|---|---|
+| Sava Arsenijević | 79/24/SI | [@egkngm](https://github.com/egkngm) |
+| Mateja Matić | 103/24/SI | [@mmatic161](https://github.com/mmatic161) |
 
-Obrazloženje: Uloge imaju različite odgovornosti i ovlašćenja, čime je ispunjen zahtev za najmanje dve uloge u sistemu.
+## Zahtevi za temu
 
-2. Stanja
+### 1. Uloge
 
-Glavni pojam sistema je porudžbina, koja tokom svog životnog ciklusa prolazi kroz više stanja:
+Sistem koriste kupci i proizvođači, sa različitim ovlašćenjima.
 
-Na čekanju – kupac je kreirao porudžbinu, a proizvođač još nije odlučio da li može da je prihvati.
-Prihvaćena – proizvođač je potvrdio da može da pripremi poručene proizvode.
-U pripremi – proizvođač priprema proizvode za preuzimanje ili isporuku.
-Poslata – porudžbina je predata dostavljaču ili je spremna za dogovoreno preuzimanje.
-Isporučena – kupac je preuzeo proizvode ili je isporuka potvrđena.
-Otkazana – porudžbina je otkazana u skladu sa pravilima sistema.
+- **Kupac** pregleda javnu ponudu, pretražuje proizvode, dodaje ih u korpu, kreira porudžbine i prati njihov status.
+- **Proizvođač** objavljuje i uređuje svoje proizvode, određuje cene i dostupne količine, obrađuje porudžbine i upravlja pripremom i isporukom.
 
-Promene stanja odvijaju se prema definisanim pravilima. Na primer, isporučena porudžbina ne može ponovo da pređe u stanje „Na čekanju“.
+Kupac može da upravlja svojim porudžbinama, ali ne može da menja proizvode i cene drugih proizvođača. Proizvođač može da upravlja samo svojim proizvodima i porudžbinama koje pripadaju njegovoj ponudi.
 
-Obrazloženje: Porudžbina ima više od četiri jasno definisana stanja i prolazi kroz kontrolisan životni ciklus.
+### 2. Stanja
 
-3. Pravila
+Porudžbina prolazi kroz više stanja tokom svog životnog ciklusa:
 
-Sistem primenjuje poslovna pravila koja određuju koje operacije su dozvoljene.
+- **Na čekanju (`Pending`)** — kupac je kreirao porudžbinu, a proizvođač još nije odlučio da li može da je prihvati.
+- **Prihvaćena (`Accepted`)** — proizvođač je prihvatio porudžbinu.
+- **U pripremi (`Preparing`)** — proizvodi se pripremaju za isporuku ili preuzimanje.
+- **Poslata (`Shipped`)** — porudžbina je predata dostavljaču ili je otpremljena.
+- **Isporučena (`Delivered`)** — isporuka je završena.
+- **Otkazana (`Cancelled`)** — porudžbina je otkazana u skladu sa pravilima sistema.
 
-Kupac ne može da poruči veću količinu proizvoda od one koja je dostupna na zalihama.
-Cena i količina proizvoda moraju biti validne, a dostupna količina ne može biti negativna.
-Proizvođač može da menja podatke samo o svojim proizvodima i porudžbinama.
-Porudžbina se ne može otkazati nakon što pređe u stanje u kojem otkazivanje više nije dozvoljeno.
-Kada dva kupca istovremeno pokušaju da poruče poslednje dostupne komade istog proizvoda, server mora da proveri stanje zaliha i odobri samo porudžbine za koje postoji dovoljna količina.
-Prilikom potvrđivanja porudžbine server proverava da li su cena, količina i dostupnost proizvoda i dalje važeće.
+Promene stanja odvijaju se prema unapred definisanim pravilima. Na primer, isporučena porudžbina ne može ponovo da pređe u stanje „Na čekanju“.
 
-Primer konkurentne izmene: Ako je ostao samo jedan komad proizvoda, a dva kupca istovremeno pokušaju da ga kupe, oba zahteva ne smeju biti uspešno potvrđena. Server mora da obezbedi da ne dođe do prodaje nepostojeće zalihe.
+### 3. Pravila
 
-Obrazloženje: Pravila ograničavaju dozvoljene operacije, a odluka o raspoloživosti proizvoda zavisi od podataka koje menjaju različiti korisnici. Zato server mora da izvrši konačnu proveru, čak i kada aplikacija već prikazuje raspoloživu količinu.
+Sistem primenjuje poslovna pravila koja određuju koje operacije su dozvoljene:
 
-4. Rad bez mreže
+- Cena proizvoda mora biti u dozvoljenom opsegu.
+- Dostupna količina proizvoda ne može biti negativna.
+- Kupac ne može da poruči veću količinu proizvoda od one koja je dostupna.
+- Proizvođač može da menja samo svoje proizvode i da obrađuje porudžbine koje pripadaju njegovoj ponudi.
+- Porudžbina može da pređe u novo stanje samo ako je taj prelaz dozvoljen.
+- Otkazivanje porudžbine dozvoljeno je samo u stanjima u kojima poslovna pravila to dopuštaju.
+- Prilikom obrade porudžbine potrebno je proveriti da li su cena i raspoloživa količina proizvoda i dalje važeće.
 
-Mobilna aplikacija omogućava kupcu da bez internet konekcije sačuva proizvode u omiljene ili privremeno izmeni sadržaj lokalne korpe. Te izmene čuvaju se na uređaju i ostaju dostupne nakon zatvaranja i ponovnog pokretanja aplikacije.
+Kada više kupaca istovremeno pokuša da poruči iste proizvode, server mora da proveri raspoložive količine i obezbedi da ne dođe do prodaje veće količine od stvarno dostupne.
 
-Kada se internet konekcija ponovo uspostavi, aplikacija može da sinhronizuje lokalne izmene sa serverom. Pre slanja porudžbine server ponovo proverava aktuelne cene i raspoložive količine.
+Na primer, ako je ostao samo jedan komad proizvoda, a dva kupca istovremeno pokušaju da ga kupe, sistem ne sme da potvrdi obe porudžbine ako bi time prekoračio raspoloživu zalihu.
 
-Obrazloženje: Korisnik može da izvrši i sačuva izmenu podataka u mobilnoj aplikaciji bez mreže. Kupovina se ne potvrđuje dok server ne proveri dostupnost proizvoda, čime se sprečavaju problemi sa zastarelim podacima.
+**Obrazloženje:** Poslovna pravila ograničavaju dozvoljene operacije i obezbeđuju doslednost podataka. Pošto više korisnika može istovremeno da menja stanje zaliha, server mora da izvrši konačnu proveru pre potvrde porudžbine.
 
-5. Posao za osoblje
+### 4. Rad bez mreže
 
-Proizvođač ima poseban interfejs prilagođen radu na većem ekranu, kao što su računar ili tablet.
+Mobilna aplikacija omogućava kupcu da određene podatke koristi i menja bez internet konekcije.
+
+Kupac može da pregleda lokalno sačuvane podatke o proizvodima, sačuva proizvode u omiljene i privremeno izmeni sadržaj korpe. Lokalne izmene ostaju dostupne nakon zatvaranja i ponovnog pokretanja aplikacije.
+
+Kada se internet konekcija ponovo uspostavi, aplikacija može da sinhronizuje lokalne podatke sa serverom.
+
+Pre potvrde porudžbine server ponovo proverava aktuelne cene i raspoložive količine proizvoda.
+
+**Obrazloženje:** Lokalno čuvanje podataka omogućava korišćenje određenih funkcionalnosti bez mreže. Konačna potvrda kupovine ipak zahteva proveru servera kako bi se izbegle porudžbine zasnovane na zastarelim informacijama.
+
+### 5. Posao za osoblje
+
+Proizvođači imaju interfejs prilagođen radu na većem ekranu, kao što su računar ili tablet.
 
 Interfejs omogućava:
 
-Pregled svih proizvoda i upravljanje njihovim podacima.
-Pretragu, filtriranje i sortiranje većeg broja proizvoda.
-Pregled porudžbina prema statusu, datumu i kupcu.
-Grupni pregled porudžbina koje čekaju obradu.
-Ažuriranje zaliha i praćenje dostupnih količina.
-Organizovanje pripreme i isporuke porudžbina.
-Pregled istorije završenih i otkazanih porudžbina.
+- Pregled, dodavanje i uređivanje proizvoda.
+- Upravljanje cenama i zalihama.
+- Pretragu, filtriranje i sortiranje proizvoda.
+- Pregled porudžbina prema statusu i datumu.
+- Brzo pronalaženje porudžbina koje čekaju obradu.
+- Ažuriranje statusa porudžbina.
+- Organizovanje pripreme, preuzimanja i isporuke.
+- Pregled istorije završenih i otkazanih porudžbina.
 
-Na primer, proizvođač koji dnevno obrađuje veliki broj porudžbina može da koristi tabelarni prikaz kako bi brzo pronašao sve porudžbine na čekanju i promenio njihov status.
+Na primer, proizvođač koji svakodnevno obrađuje veliki broj porudžbina može da koristi tabelarni prikaz i filtere kako bi brzo pronašao porudžbine koje zahtevaju obradu.
 
-Obrazloženje: Proizvođač obavlja operativne zadatke nad velikim brojem zapisa, pa su napredna pretraga, filtriranje, tabelarni prikaz i upravljanje većim skupovima podataka opravdani na većem ekranu.
+**Obrazloženje:** Upravljanje velikim brojem proizvoda, zaliha i porudžbina predstavlja operativni posao koji je praktičnije obavljati na većem ekranu, uz naprednu pretragu i pregled podataka.
 
-6. Javni sadržaj
+### 6. Javni sadržaj
 
-Deo aplikacije dostupan je bez prijave i sadrži javne informacije o proizvodima i proizvođačima.
+Deo aplikacije dostupan je bez prijave i omogućava posetiocima da pregledaju proizvode i proizvođače.
 
 Javni sadržaj obuhvata:
 
-Naziv, opis i fotografije proizvoda.
-Cene i javno prikazanu raspoloživost proizvoda.
-Kategorije proizvoda, kao što su voće, povrće, mlečni proizvodi, med i zimnica.
-Nazive i opise lokalnih proizvođača.
-Informacije o mestu proizvodnje i načinu preuzimanja ili isporuke, kada su dostupne.
-Stranice pojedinačnih proizvoda i proizvođača sa jedinstvenim URL adresama.
+- Nazive, opise i fotografije proizvoda.
+- Cene i javno prikazanu raspoloživost proizvoda.
+- Kategorije proizvoda, kao što su voće, povrće, mlečni proizvodi, med i zimnica.
+- Informacije o lokalnim proizvođačima.
+- Mesto proizvodnje i način preuzimanja ili isporuke, kada su ti podaci dostupni.
+- Pojedinačne stranice proizvoda i proizvođača sa jedinstvenim URL adresama.
 
-Posetioci mogu da pretražuju javnu ponudu i pregledaju proizvode bez kreiranja naloga. Za kreiranje porudžbine i pristup ličnim podacima potrebno je prijaviti se.
+Posetioci mogu da pretražuju ponudu i pregledaju proizvode bez kreiranja naloga. Za kreiranje porudžbine i pristup ličnim podacima potrebno je prijaviti se.
 
 Javne stranice biće organizovane tako da pretraživači mogu da pronađu i indeksiraju proizvode i proizvođače, čime se povećava vidljivost lokalne ponude na internetu.
 
-Obrazloženje: Javni sadržaj ima smisla i za korisnike koji nisu prijavljeni, a stranice proizvoda i proizvođača predstavljaju relevantan sadržaj koji može da se indeksira u internet pretraživačima.
+**Obrazloženje:** Javni sadržaj omogućava potencijalnim kupcima da otkriju proizvode i proizvođače pre registracije, dok indeksiranje stranica može da doprinese vidljivosti lokalnih proizvoda na internetu.
+
+## Delovi sistema
+
+| Deo | Korisnici | Tehnologija | Platforme |
+|---|---|---|---|
+| Mobilna aplikacija | Kupci | Flutter | Android |
+| Backoffice aplikacija | Proizvođači | Flutter | Windows, veb |
+| Javni veb | Svi posetioci | Jaspr | Pregledač |
+| Server | Ostali delovi sistema | Relic, PostgreSQL | Linux |
+| Domenski paket | Svi delovi sistema | Dart | Sve |
+
+Svi delovi sistema koriste zajednički domenski paket, koji sadrži modele i poslovna pravila. Server čuva podatke i ponovo proverava poslovna pravila prilikom obrade zahteva.
+
+## Stanje projekta
+
+Projekat predstavlja platformu za prodaju lokalnih poljoprivrednih i domaćih proizvoda. Detaljan opis domena, implementacija funkcionalnosti i prateća dokumentacija razvijaju se tokom semestra.
