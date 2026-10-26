@@ -4,7 +4,6 @@ import 'package:equatable/equatable.dart';
 import '../errors.dart';
 import '../result.dart';
 import '../text_rules.dart';
-
 final class DeliveryAddress extends Equatable {
   const DeliveryAddress._(this.value);
 

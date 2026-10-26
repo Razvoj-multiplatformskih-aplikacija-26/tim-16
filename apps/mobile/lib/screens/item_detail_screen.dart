@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../widgets/app_button.dart';
-import '../widgets/app_bottom_navigation.dart';
 import '../widgets/quantity_selector.dart';
 import 'profile_screen.dart';
 class ItemDetailScreen extends StatelessWidget {
@@ -146,12 +145,6 @@ class ItemDetailScreen extends StatelessWidget {
         ),
       ),
 
-      bottomNavigationBar: AppBottomNavigation(
-        currentIndex: 3,
-        onTap: (index) {
-
-        },
-      ),
     );
   }
 }

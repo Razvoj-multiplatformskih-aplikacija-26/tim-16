@@ -248,20 +248,6 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
 
-      bottomNavigationBar: AppBottomNavigation(
-        currentIndex: 3,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const HomeScreen(),
-              ),
-            );
-          }
-          // Ostale ekrane povezujemo kada budu napravljeni.
-        },
-      ),
     );
   }
 }
@@ -333,6 +319,7 @@ class _ProfileActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
+
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 5,

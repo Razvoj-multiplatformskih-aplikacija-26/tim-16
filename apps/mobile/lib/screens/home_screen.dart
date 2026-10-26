@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../widgets/app_button.dart';
-import 'package:svezko_app/widgets/app_bottom_navigation.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/product_card.dart';
 import 'item_detail_screen.dart';
@@ -63,13 +62,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-
-
-      bottomNavigationBar: AppBottomNavigation(
-        currentIndex: 0,
-        onTap: (index) {
-        },
       ),
 
     );
