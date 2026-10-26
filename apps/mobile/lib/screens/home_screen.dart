@@ -58,8 +58,8 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             AppButton(
-              text: 'Zapocni',
-              onPressed: () {},
+              text: 'Moje porudžbine',
+              onPressed: () => context.push('/orders'),
             ),
           ],
         ),
