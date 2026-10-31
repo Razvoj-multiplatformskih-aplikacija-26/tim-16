@@ -8,4 +8,4 @@ workspace:
   - apps/mobile
   #- apps/backoffice
   - packages/domain
-  #- packages/blocs
+  - packages/blocs

@@ -15,10 +15,10 @@ Result<Product>createProduct({
   required User actor,
   required String name,
   required String description,
-required ProductCategory category,
-required ProductUnit unit,
-required int priceDinar,
-required int stockUnits,
+  required ProductCategory category,
+  required ProductUnit unit,
+  required int priceDinars,
+  required int stockUnits,
 }){
   if(actor.role!=UserRole.producer)
     {
@@ -30,7 +30,7 @@ required int stockUnits,
 
   if(nameError != null ) return Failure<Product>(nameError);
 
-  final parsedPrice=Price.parse(priceDinar);
+  final parsedPrice=Price.parse(priceDinars);
   final priceError=parsedPrice.errorOrNull;
   if (priceError != null) return Failure<Product>(priceError);
 
