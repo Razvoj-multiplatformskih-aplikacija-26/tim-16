@@ -69,7 +69,18 @@ final class NotAuthorized extends DomainError {
 }
 
 // Pravljenje porudzbine
+final class TooManyActiveOrders extends DomainError {
+  const TooManyActiveOrders(this.limit);
+  final int limit;
+}
 
+final class MixedProducers extends DomainError {
+  const MixedProducers();
+}
+final class DuplicateProductInOrder extends DomainError {
+  const DuplicateProductInOrder(this.productId);
+  final ProductId productId;
+}
 final class EmptyOrder extends DomainError {
   const EmptyOrder();
 }
