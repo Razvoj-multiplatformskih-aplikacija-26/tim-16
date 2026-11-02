@@ -1,8 +1,7 @@
-/// Support for doing something awesome.
-///
-/// More dartdocs go here.
-library;
+library blocs;
 
-export 'src/blocs_base.dart';
-
-// TODO: Export any libraries intended for clients of this package.
+export 'src/models/models.dart';
+export 'src/repository/shop_repository.dart';
+export 'src/bloc/shop_state.dart';
+export 'src/bloc/shop_event.dart';
+export 'src/bloc/shop_bloc.dart';

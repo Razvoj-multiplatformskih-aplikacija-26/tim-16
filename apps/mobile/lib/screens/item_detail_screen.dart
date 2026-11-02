@@ -1,9 +1,9 @@
-// item_detail_screen.dart
+import 'package:blocs/blocs.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart'; // DODATO
 import '../theme/colors.dart';
 import '../widgets/app_button.dart';
 import '../widgets/quantity_selector.dart';
-import 'package:svezko_app/repository/mock_data.dart';
 
 class ItemDetailScreen extends StatelessWidget {
   final Product product;
@@ -14,12 +14,11 @@ class ItemDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      // Uklonjen je klasični AppBar, sada koristimo CustomScrollView sa SliverAppBar-om
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 350.0, // Znatno veća visina slike
-            pinned: true, // Zadržava naslov na vrhu kada se skrola
+            expandedHeight: 350.0,
+            pinned: true,
             backgroundColor: AppColors.surface,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
@@ -31,7 +30,7 @@ class ItemDetailScreen extends StatelessWidget {
                     Shadow(
                       offset: const Offset(0, 1),
                       blurRadius: 8.0,
-                      color: Colors.black.withOpacity(0.5), // Sjena za bolju čitljivost teksta preko slike
+                      color: Colors.black.withOpacity(0.5),
                     ),
                   ],
                 ),
@@ -56,15 +55,13 @@ class ItemDetailScreen extends StatelessWidget {
             ),
           ),
 
-          // Ostatak sadržaja ekrana
           SliverToBoxAdapter(
             child: Container(
-              // Dodani zaobljeni vrhovi kako bi se stvorio efekt preklapanja
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              transform: Matrix4.translationValues(0.0, -20.0, 0.0), // Podiže kontejner malo preko slike
+              transform: Matrix4.translationValues(0.0, -20.0, 0.0),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
                 child: Column(
@@ -167,7 +164,9 @@ class _QuantityPriceRowState extends State<_QuantityPriceRow> {
     }
 
     setState(() => errorMessage = null);
-    FakeDatabase.addOrder(widget.product, quantity);
+
+    // ZAMENJENO: Šaljemo BLoC događaj za kreiranje porudžbine!
+    context.read<ShopBloc>().add(CreateOrderEvent(widget.product, quantity));
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -192,7 +191,6 @@ class _QuantityPriceRowState extends State<_QuantityPriceRow> {
             const Spacer(),
             Flexible(
               child: Text(
-                // Ovdje je ispravljen kod za množenje koji je bio prekinut u novom redu
                 '${(widget.product.price * quantity).toStringAsFixed(0)} RSD',
                 textAlign: TextAlign.end,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),

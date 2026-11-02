@@ -1,4 +1,5 @@
 import 'package:blocs/blocs.dart';
+import 'package:blocs/src/blocs_base.dart';
 import 'package:test/test.dart';
 
 void main() {

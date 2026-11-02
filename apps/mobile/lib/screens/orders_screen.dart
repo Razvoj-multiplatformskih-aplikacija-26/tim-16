@@ -1,5 +1,6 @@
+import 'package:blocs/blocs.dart';
 import 'package:flutter/material.dart';
-import 'package:svezko_app/repository/mock_data.dart'; // PAZI: Ovaj import mora biti identičan u home_screen i item_detail_screen
+import 'package:flutter_bloc/flutter_bloc.dart'; // DODATO
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -9,7 +10,7 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
-  void _cancelOrder(Order order) {
+  void _cancelOrder(BuildContext context, Order order) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -22,11 +23,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
           TextButton(
             onPressed: () {
-              setState(() {
-                order.state = OrderState.cancelled;
-              });
-              // PROMENA 3: Obaveštavamo UI da se status jedne stavke promenio
-              FakeDatabase.ordersNotifier.value = List.from(FakeDatabase.ordersNotifier.value);
+              // ZAMENJENO: Šaljemo BLoC događaj za otkazivanje porudžbine!
+              context.read<ShopBloc>().add(CancelOrderEvent(order));
 
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -45,45 +43,60 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Moje porudžbine')),
 
-      // PROMENA 4: Ekran sada osluškuje ordersNotifier
-      body: ValueListenableBuilder<List<Order>>(
-        valueListenable: FakeDatabase.ordersNotifier,
-        builder: (context, orders, child) {
-          return orders.isEmpty
-              ? const Center(
-            child: Text(
-              'Trenutno nemate nijednu porudžbinu.',
-              style: TextStyle(fontSize: 16),
-            ),
-          )
-              : ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: orders.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final order = orders[index];
-              return Card(
-                child: ListTile(
-                  leading: const Icon(Icons.receipt_long_outlined),
-                  title: Text(order.product.name),
-                  subtitle: Text('Količina: ${order.quantity} ${order.product.unit}\nStatus: ${order.state.nameSr}'),
-                  isThreeLine: true,
-                  trailing: order.state == OrderState.pending
-                      ? IconButton(
-                    icon: const Icon(Icons.cancel_outlined, color: Colors.red),
-                    onPressed: () => _cancelOrder(order),
-                    tooltip: 'Otkaži porudžbinu',
-                  )
-                      : const SizedBox.shrink(),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Otvorena porudžbina: ${order.product.name}')),
-                    );
-                  },
+      // ZAMENJENO: ValueListenableBuilder je postao BlocBuilder
+      body: BlocBuilder<ShopBloc, ShopState>(
+        builder: (context, state) {
+          if (state is ShopLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state is ShopError) {
+            return Center(child: Text(state.message));
+          }
+
+          if (state is ShopLoaded) {
+            final orders = state.orders;
+
+            if (orders.isEmpty) {
+              return const Center(
+                child: Text(
+                  'Trenutno nemate nijednu porudžbinu.',
+                  style: TextStyle(fontSize: 16),
                 ),
               );
-            },
-          );
+            }
+
+            return ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: orders.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final order = orders[index];
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.receipt_long_outlined),
+                    title: Text(order.product.name),
+                    subtitle: Text('Količina: ${order.quantity} ${order.product.unit}\nStatus: ${order.state.nameSr}'),
+                    isThreeLine: true,
+                    trailing: order.state == OrderState.pending
+                        ? IconButton(
+                      icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                      onPressed: () => _cancelOrder(context, order),
+                      tooltip: 'Otkaži porudžbinu',
+                    )
+                        : const SizedBox.shrink(),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Otvorena porudžbina: ${order.product.name}')),
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          }
+
+          return const SizedBox.shrink();
         },
       ),
     );
