@@ -1,7 +1,7 @@
 name: blocs
-description: A starting point for Dart libraries or applications.
+description: Block i repo za svezko
 version: 1.0.0
-resolution: workspace # <--- Dodajte ovu liniju ovde
+resolution: workspace
 # repository: https://github.com/my_org/my_repo
 
 environment:

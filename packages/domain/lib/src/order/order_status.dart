@@ -9,7 +9,7 @@ final class Pending extends OrderStatus {
 
   @override
   // TODO: implement props
-  List<Object?> get props => throw UnimplementedError();
+  List<Object?> get props => [];
 }
 
 final class Accepted extends OrderStatus {
@@ -26,7 +26,7 @@ final class Preparing extends OrderStatus{
 
   @override
   // TODO: implement props
-  List<Object?> get props => throw UnimplementedError();
+  List<Object?> get props => [];
 }
 
 final class Shipped extends OrderStatus{
@@ -43,7 +43,7 @@ final class Delivered extends OrderStatus{
 
   @override
   // TODO: implement props
-  List<Object?> get props => throw UnimplementedError();
+  List<Object?> get props => [];
 }
 
 enum CancelReason {byBuyer,byProducer}
