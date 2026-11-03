@@ -1,4 +1,4 @@
-
+﻿
 import 'package:blocs/blocs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,7 +16,9 @@ class AppShell extends StatelessWidget {
   void _showFeedback(BuildContext context, ShopFeedback feedback) {
     final message = switch (feedback) {
       OrderPlaced() => 'Porudžbina je poslata proizvođaču.',
-      OrderCancelled() => 'Porudžbina je otkazana.',
+      OrderCancelled() => 'Porudžbina je otkazana.',
+      OrderStatusChanged() => 'Status porudzbine je promenjen.',
+      ProductDeleted() => 'Proizvod je obrisan.',
       RuleViolated(:final error) => error.message,
       ActionFailed() => 'Radnja nije uspela. Pokušajte ponovo.',
     };
@@ -52,4 +54,5 @@ class AppShell extends StatelessWidget {
     );
   }
 }
+
 

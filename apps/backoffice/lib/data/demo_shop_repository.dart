@@ -3,7 +3,7 @@ import 'package:domain/domain.dart';
 
 /// Lokalni adapter za pokretanje kostura dok se ne uvede serverski API.
 /// Početni podaci su usklađeni sa mock podacima iz mobilne aplikacije.
-class DemoShopRepository implements ShopRepository {
+class DemoShopRepository implements ShopRepository, ProductManagementRepository {
   final List<User> _producers = [
     _producer('pr-1', 'Bojan Matić'),
     _producer('pr-2', 'Gazdinstvo Petrović'),
@@ -36,6 +36,11 @@ class DemoShopRepository implements ShopRepository {
     } else {
       _orders[index] = order;
     }
+  }
+
+  @override
+  Future<void> deleteProduct(ProductId productId) async {
+    _products.removeWhere((product) => product.id == productId);
   }
 
   static User _producer(String id, String name) =>

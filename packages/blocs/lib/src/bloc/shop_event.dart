@@ -39,3 +39,20 @@ final class CancelOrderEvent extends ShopEvent {
   @override
   List<Object?> get props => [orderId];
 }
+
+final class ChangeOrderStatusEvent extends ShopEvent {
+  const ChangeOrderStatusEvent({required this.orderId, required this.status});
+  final OrderId orderId;
+  final OrderStatus status;
+
+  @override
+  List<Object?> get props => [orderId, status];
+}
+
+final class DeleteProductEvent extends ShopEvent {
+  const DeleteProductEvent(this.productId);
+  final ProductId productId;
+
+  @override
+  List<Object?> get props => [productId];
+}

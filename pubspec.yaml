@@ -6,6 +6,6 @@ environment:
 
 workspace:
   - apps/mobile
-  #- apps/backoffice
+  - apps/backoffice
   - packages/domain
   - packages/blocs

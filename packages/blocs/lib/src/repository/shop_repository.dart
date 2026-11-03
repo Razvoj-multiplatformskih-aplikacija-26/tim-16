@@ -9,3 +9,9 @@ abstract interface class ShopRepository {
   /// Čuva novu porudžbinu ili izmenjenu postojeću (isti id).
   Future<void> saveOrder(Order order);
 }
+
+/// Optional repository capability used by backoffice clients.
+abstract interface class ProductManagementRepository {
+  Future<void> deleteProduct(ProductId productId);
+}
+

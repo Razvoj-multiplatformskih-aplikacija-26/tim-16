@@ -22,6 +22,22 @@ final class OrderCancelled extends ShopFeedback {
   List<Object?> get props => [order];
 }
 
+final class OrderStatusChanged extends ShopFeedback {
+  const OrderStatusChanged(this.order);
+  final Order order;
+
+  @override
+  List<Object?> get props => [order];
+}
+
+final class ProductDeleted extends ShopFeedback {
+  const ProductDeleted(this.productId);
+  final ProductId productId;
+
+  @override
+  List<Object?> get props => [productId];
+}
+
 /// Domensko pravilo je odbilo akciju. Tekst poruke bira aplikacija.
 final class RuleViolated extends ShopFeedback {
   const RuleViolated(this.error);
@@ -79,9 +95,9 @@ final class ShopLoaded extends ShopState {
       producers[id]?.fullName ?? 'Nepoznat proizvođač';
 
   /// Pažnja: ako se `feedback` ne prosledi, on se BRIŠE (namerno).
-  ShopLoaded copyWith({List<Order>? orders, ShopFeedback? feedback}) =>
+  ShopLoaded copyWith({List<Product>? products, List<Order>? orders, ShopFeedback? feedback}) =>
       ShopLoaded(
-        products: products,
+        products: products ?? this.products,
         orders: orders ?? this.orders,
         producers: producers,
         feedback: feedback,
