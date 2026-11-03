@@ -20,7 +20,8 @@ final class Product extends Equatable{
     required this.price,
     required this.stock,
     this.published = true,
-});
+    this.imageUrl = '',
+  });
   final ProductId id;
   final UserId producerId;
   final ProductName name;
@@ -31,6 +32,7 @@ final class Product extends Equatable{
   final Stock stock;
 
   final bool published;
+  final String imageUrl;
 
   bool get isAvailable => published&&stock.units >0;
 
@@ -44,6 +46,7 @@ final class Product extends Equatable{
     price: price ?? this.price,
     stock: stock ?? this.stock,
     published: published ?? this.published,
+    imageUrl: imageUrl,
   );
 
   @override
@@ -58,5 +61,6 @@ final class Product extends Equatable{
     price,
     stock,
     published,
+    imageUrl,
   ];
 }

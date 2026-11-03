@@ -1,12 +1,17 @@
+import 'package:blocs/blocs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:blocs/blocs.dart'; // TVOJ PAKET
+
 import '../repository/mock_data.dart';
+import '../text/labels.dart';
 import '../theme/colors.dart';
+import '../widgets/error_view.dart';
 import '../widgets/product_card.dart';
 import 'filter_screen.dart';
-// import 'package:svezko_app/repository/fake_shop_repository.dart'; // Trebaće ti da pristupiš forceError()
+
+/// Šta test-meni radi: greška pri učitavanju ili pri sledećem čuvanju.
+enum _DebugAction { load, save }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,14 +21,22 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   FilterOptions _currentFilters = FilterOptions();
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onDebugAction(_DebugAction action) {
+    final repository = context.read<ShopRepository>();
+    if (repository is FakeShopRepository) repository.forceError();
+    if (action == _DebugAction.load) {
+      context.read<ShopBloc>().add(const LoadShopDataEvent());
+    }
   }
 
   @override
@@ -34,20 +47,29 @@ class _HomeScreenState extends State<HomeScreen> {
         titleSpacing: 16,
         title: const Text('Svezko'),
         actions: [
-          IconButton(
+          PopupMenuButton<_DebugAction>(
             icon: const Icon(Icons.bug_report, color: Colors.red),
-            tooltip: 'Izazovi grešku (Test)',
-            onPressed: () {
-              final repo = context.read<ShopRepository>() as FakeShopRepository;
-              repo.forceError();
-              context.read<ShopBloc>().add(LoadShopDataEvent());
-            },
+            tooltip: 'Izazovi grešku (test)',
+            onSelected: _onDebugAction,
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: _DebugAction.load,
+                child: Text('Greška pri učitavanju'),
+              ),
+              PopupMenuItem(
+                value: _DebugAction.save,
+                child: Text('Greška pri sledećem čuvanju'),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.tune),
             tooltip: 'Filteri',
             onPressed: () async {
-              final result = await context.push<FilterOptions>('/filters', extra: _currentFilters);
+              final result = await context.push<FilterOptions>(
+                '/filters',
+                extra: _currentFilters,
+              );
               if (result != null) {
                 setState(() => _currentFilters = result);
               }
@@ -58,81 +80,88 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Pretraži proizvode ili proizvođače',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (value) => setState(() => _searchQuery = value),
+            ),
+          ),
           Expanded(
             child: BlocBuilder<ShopBloc, ShopState>(
-              builder: (context, state) {
-                if (state is ShopLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (state is ShopError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, color: Colors.red, size: 60),
-                        const SizedBox(height: 16),
-                        Text(state.message),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            context.read<ShopBloc>().add(LoadShopDataEvent());
-                          },
-                          child: const Text('Pokušaj ponovo'),
-                        )
-                      ],
-                    ),
-                  );
-                }
-
-                if (state is ShopEmpty) {
-                  return const Center(child: Text('Nema dostupnih proizvoda u bazi.'));
-                }
-                if (state is ShopLoaded) {
-                  final allProducts = state.products;
-
-                  final filteredProducts = allProducts.where((product) {
-                    final query = searchQuery.toLowerCase();
-                    final searchMatches = product.name.toLowerCase().contains(query) || product.producer.toLowerCase().contains(query);
-                    final priceMatches = product.price <= _currentFilters.maxPrice;
-                    final availabilityMatches = !_currentFilters.onlyAvailable || product.availableQuantity > 0;
-                    return searchMatches && priceMatches && availabilityMatches;
-                  }).toList();
-
-                  if (filteredProducts.isEmpty) {
-                    return const Center(child: Text('Nema proizvoda koji odgovaraju filterima.'));
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredProducts.length,
-                    itemBuilder: (context, index) {
-                      final product = filteredProducts[index];
-                      return ProductCard(
-                        name: product.name,
-                        producer: product.producer,
-                        price: product.price,
-                        unit: product.unit,
-                        imageUrl: product.imageUrl,
-                        isAvailable: product.availableQuantity > 0,
-                        onAddToCart: product.availableQuantity > 0 ? () {
-                          context.read<ShopBloc>().add(CreateOrderEvent(product, 1));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Proizvod je dodan u narudžbe!')),
-                          );
-                        } : null,
-                        onTap: () => context.push('/item-detail', extra: product),
-                      );
-                    },
-                  );
-                }
-
-                return const SizedBox.shrink();
+              builder: (context, state) => switch (state) {
+                ShopLoading() =>
+                const Center(child: CircularProgressIndicator()),
+                ShopError(:final message) => ErrorView(message: message),
+                ShopEmpty() =>
+                const Center(child: Text('Nema dostupnih proizvoda.')),
+                final ShopLoaded loaded => _ProductList(
+                  state: loaded,
+                  query: _searchQuery.trim().toLowerCase(),
+                  filters: _currentFilters,
+                ),
               },
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ProductList extends StatelessWidget {
+  const _ProductList({
+    required this.state,
+    required this.query,
+    required this.filters,
+  });
+
+  final ShopLoaded state;
+  final String query;
+  final FilterOptions filters;
+
+  @override
+  Widget build(BuildContext context) {
+    final products = state.products.where((product) {
+      final producer = state.producerName(product.producerId).toLowerCase();
+      final matchesSearch = query.isEmpty ||
+          product.name.value.toLowerCase().contains(query) ||
+          producer.contains(query);
+      final matchesPrice = product.price.dinars <= filters.maxPrice;
+      final matchesAvailability = !filters.onlyAvailable || product.isAvailable;
+      return matchesSearch && matchesPrice && matchesAvailability;
+    }).toList();
+
+    if (products.isEmpty) {
+      return const Center(
+        child: Text('Nema proizvoda koji odgovaraju pretrazi i filterima.'),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: products.length,
+      itemBuilder: (context, index) {
+        final product = products[index];
+        return ProductCard(
+          name: product.name.value,
+          producer: state.producerName(product.producerId),
+          price: product.price.dinars.toDouble(),
+          unit: product.unit.label,
+          imageUrl: product.imageUrl,
+          isAvailable: product.isAvailable,
+          onAddToCart: product.isAvailable
+              ? () => context.read<ShopBloc>().add(
+            CreateOrderEvent(productId: product.id, quantity: 1),
+          )
+              : null,
+          onTap: () => context.push('/products/${product.id.value}'),
+        );
+      },
     );
   }
 }

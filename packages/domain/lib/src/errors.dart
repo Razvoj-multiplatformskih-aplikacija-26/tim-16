@@ -90,6 +90,10 @@ final class ProductNotFound extends DomainError {
   final ProductId productId;
 }
 
+final class OrderNotFound extends DomainError {
+  const OrderNotFound(this.orderId);
+  final OrderId orderId;
+}
 final class AddressRequired extends DomainError {
   const AddressRequired();
 }

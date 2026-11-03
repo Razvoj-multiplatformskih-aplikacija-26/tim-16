@@ -1,8 +1,11 @@
-import '../models/models.dart';
+import 'package:domain/domain.dart';
 
 // Repozitorijum je abstract interface class u zajedničkom paketu
 abstract interface class ShopRepository {
+  Future<List<User>> loadProducers();
   Future<List<Product>> loadProducts();
   Future<List<Order>> loadOrders();
-  Future<Order> createOrder(Product product, int quantity);
+
+  /// Čuva novu porudžbinu ili izmenjenu postojeću (isti id).
+  Future<void> saveOrder(Order order);
 }

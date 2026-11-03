@@ -1,74 +1,131 @@
 import 'package:bloc/bloc.dart';
+import 'package:domain/domain.dart';
+
+import '../repository/shop_repository.dart';
 import 'shop_event.dart';
 import 'shop_state.dart';
-import '../repository/shop_repository.dart';
-import '../models/models.dart';
 
 class ShopBloc extends Bloc<ShopEvent, ShopState> {
-  final ShopRepository repository;
-
-  ShopBloc({required this.repository}) : super(ShopLoading()) {
-    on<LoadShopDataEvent>(_onLoadShopData);
+  ShopBloc({
+    required this.repository,
+    required this.currentUser,
+    DateTime Function() clock = DateTime.now,
+  })  : _clock = clock,
+        super(const ShopLoading()) {
+    on<LoadShopDataEvent>(_onLoad);
     on<CreateOrderEvent>(_onCreateOrder);
-    // 1. Registrujemo novi događaj
     on<CancelOrderEvent>(_onCancelOrder);
   }
 
-  Future<void> _onLoadShopData(LoadShopDataEvent event, Emitter<ShopState> emit) async {
-    emit(ShopLoading());
+  final ShopRepository repository;
+  final User currentUser;
+  final DateTime Function() _clock;
 
-    try {
-      final products = await repository.loadProducts();
-      final orders = await repository.loadOrders();
 
-      if (products.isEmpty) {
-        emit(ShopEmpty());
-      } else {
-        emit(ShopLoaded(products: products, orders: orders));
-      }
-    } catch (e) {
-      emit(ShopError("Došlo je do greške pri učitavanju podataka."));
+Future<void> _onLoad(
+    LoadShopDataEvent event,
+    Emitter<ShopState>emit,
+    )async {
+  emit(const ShopLoading());
+  try {
+    final products = await repository.loadProducts();
+    final orders = await repository.loadOrders();
+    final producers = await repository.loadProducers();
+
+    final visible = products.where((p) => p.published).toList();
+    if (visible.isEmpty) {
+      emit(const ShopEmpty());
+      return;
     }
+    emit(
+      ShopLoaded(
+        products: visible,
+        orders: orders,
+        producers: {for (final u in producers) u.id: u},
+      ),
+    );
+  } catch (_) {
+    emit(const ShopError('Došlo je do greške pri učitavanju podataka.'));
   }
+}
 
-  Future<void> _onCreateOrder(CreateOrderEvent event, Emitter<ShopState> emit) async {
-    if (state is ShopLoaded) {
-      final currentState = state as ShopLoaded;
+ Future<void>_onCreateOrder(
+     CreateOrderEvent event,
+     Emitter<ShopState>emit,
+     )async {
+  final current=state;
+  if(current is! ShopLoaded) return;
+  emit(current.copyWith());
 
+  final now=_clock();
+  final result=placeOrder(
+    id:OrderId('o-${now.microsecondsSinceEpoch}'),
+    buyer:currentUser,
+    request: [
+      OrderRequestLine(productId: event.productId, quantity: event.quantity),
+    ],
+    catalog: current.products,
+    existingOrders: current.orders,
+    method: event.method,
+    address: event.address,
+    now: now,
+  );
+
+  switch (result) {
+    case Failure(:final error):
+      emit(current.copyWith(feedback: RuleViolated(error)));
+    case Success(:final value):
       try {
-        final newOrder = await repository.createOrder(event.product, event.quantity);
-
-        final updatedOrders = List<Order>.from(currentState.orders)..insert(0, newOrder);
-
-        emit(ShopLoaded(
-          products: currentState.products,
-          orders: updatedOrders,
-        ));
-      } catch (e) {
-        // Greška pri kreiranju
+        await repository.saveOrder(value);
+      } catch (_) {
+        emit(current.copyWith(feedback: const ActionFailed()));
+        return;
       }
-    }
+      final latest = state;
+      if (latest is! ShopLoaded) return;
+      emit(
+        latest.copyWith(
+          orders: [value, ...latest.orders],
+          feedback: OrderPlaced(value),
+        ),
+      );
   }
+ }
 
-  // 2. Dodajemo metodu za obradu otkazivanja
-  void _onCancelOrder(CancelOrderEvent event, Emitter<ShopState> emit) {
-    if (state is ShopLoaded) {
-      final currentState = state as ShopLoaded;
+  Future<void> _onCancelOrder(
+      CancelOrderEvent event,
+      Emitter<ShopState> emit,
+      ) async {
+    final current = state;
+    if (current is! ShopLoaded) return;
+    emit(current.copyWith());
 
-      // Mapiramo stare porudžbine u novu listu i menjamo status samo onoj koja se otkazuje
-      final updatedOrders = currentState.orders.map((o) {
-        if (o.id == event.order.id) {
-          // Vraćamo istu porudžbinu, ali sa promenjenim stanjem u 'cancelled'
-          return Order(o.id, o.product, o.quantity, OrderState.cancelled);
+    final order = current.orders.where((o) => o.id == event.orderId).firstOrNull;
+    if (order == null) {
+      emit(current.copyWith(feedback: RuleViolated(OrderNotFound(event.orderId))));
+      return;
+    }
+
+    final result = cancelOrder(order, actor: currentUser);
+
+    switch (result) {
+      case Failure(:final error):
+        emit(current.copyWith(feedback: RuleViolated(error)));
+      case Success(:final value):
+        try {
+          await repository.saveOrder(value);
+        } catch (_) {
+          emit(current.copyWith(feedback: const ActionFailed()));
+          return;
         }
-        return o; // Ostale ostaju nepromenjene
-      }).toList();
-
-      // Emitujemo osveženo stanje
-      emit(ShopLoaded(
-        products: currentState.products,
-        orders: updatedOrders,
-      ));
+        final latest = state;
+        if (latest is! ShopLoaded) return;
+        emit(
+          latest.copyWith(
+            orders: [for (final o in latest.orders) o.id == value.id ? value : o],
+            feedback: OrderCancelled(value),
+          ),
+        );
     }
   }
 }

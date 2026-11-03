@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../models/models.dart';
+import 'package:domain/domain.dart';
 
 sealed class ShopEvent extends Equatable {
   const ShopEvent();
@@ -8,20 +8,34 @@ sealed class ShopEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-final class LoadShopDataEvent extends ShopEvent {}
+final class LoadShopDataEvent extends ShopEvent {
+  const LoadShopDataEvent();
+}
 
 final class CreateOrderEvent extends ShopEvent {
-  final Product product;
-  final int quantity;
+  const CreateOrderEvent(
+  {
+    required this.productId,
+    required this.quantity,
+    this.method = DeliveryMethod.pickup,
+    this.address,
+  });
 
-  const CreateOrderEvent(this.product, this.quantity);
+  final ProductId productId;
+  final int quantity;
+  final DeliveryMethod method;
+  final DeliveryAddress? address;
+
+
 
   @override
-  List<Object?> get props => [product, quantity];
+  List<Object?> get props => [productId, quantity, method, address];
 }
 final class CancelOrderEvent extends ShopEvent {
-  final Order order;
-  const CancelOrderEvent(this.order);
+  const CancelOrderEvent(this.orderId);
+
+  final OrderId orderId;
+
   @override
-  List<Object?> get props => [order];
+  List<Object?> get props => [orderId];
 }

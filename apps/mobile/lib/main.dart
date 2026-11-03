@@ -1,25 +1,21 @@
+import 'package:blocs/blocs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:blocs/blocs.dart';
-import 'repository/mock_data.dart'; // Prilagodi putanju ako ti se fajl zove drugačije
-import 'app.dart';
 
+import 'app.dart';
+import 'repository/mock_data.dart';
 void main() {
-  // 1. Kreiramo instancu lažnog repozitorijuma
-  final fakeRepository = FakeShopRepository();
+  // Lažna implementacija porta. Za drugu implementaciju (odbrana) zameni
+  // sa SecondFakeShopRepository() iz mock_dataV2.dart.
+  final repository = FakeShopRepository();
 
   runApp(
-    // 2. Omogućavamo pristupačnost repozitorijumu (potrebno za dugme za grešku na odbrani)
+    // Repozitorijum je dostupan i ekranu (dugme za izazivanje greške).
     RepositoryProvider<ShopRepository>.value(
-      value: fakeRepository,
-      child: MultiBlocProvider(
-        providers: [
-          // 3. Kreiramo ShopBloc i odmah mu šaljemo događaj za učitavanje početnih podataka
-          BlocProvider(
-            create: (context) => ShopBloc(repository: fakeRepository)
-              ..add(LoadShopDataEvent()),
-          ),
-        ],
+      value: repository,
+      child: BlocProvider<ShopBloc>(
+        create: (_) => ShopBloc(repository: repository, currentUser: demoBuyer)
+          ..add(const LoadShopDataEvent()),
         child: const SvezkoApp(),
       ),
     ),

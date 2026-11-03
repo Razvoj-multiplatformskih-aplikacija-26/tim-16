@@ -1,12 +1,12 @@
-import 'package:blocs/blocs.dart';
+import 'package:domain/domain.dart';
 import 'package:go_router/go_router.dart';
-import 'package:svezko_app/repository/mock_data.dart';
 
+import 'screens/filter_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/item_detail_screen.dart';
+import 'screens/order_detail_screen.dart';
 import 'screens/orders_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/filter_screen.dart'; // DODAT IMPORT ZA FILTER SCREEN
 import 'widgets/app_shell.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -16,7 +16,7 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state, navigationShell) =>
           AppShell(navigationShell: navigationShell),
       branches: [
-        // 1. POČETNI EKRAN (HOME GRANA)
+        // 1. Početni ekran
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -25,18 +25,16 @@ final GoRouter appRouter = GoRouter(
               builder: (context, state) => const HomeScreen(),
               routes: [
                 GoRoute(
-                  path: 'item-detail', // puna adresa: /item-detail
-                  name: 'itemDetail',
+                  path: 'products/:id', // /products/p1
+                  name: 'productDetail',
                   builder: (context, state) => ItemDetailScreen(
-                    product: state.extra as Product,
+                    productId: ProductId(state.pathParameters['id']!),
                   ),
                 ),
-                // DODATA RUTA ZA FILTERE
                 GoRoute(
-                  path: 'filters', // puna adresa: /filters
+                  path: 'filters', // /filters
                   name: 'filters',
                   builder: (context, state) => FilterScreen(
-                    // Hvatamo prosleđene filtere da bi klizač znao gde da stane
                     initialFilters: state.extra as FilterOptions?,
                   ),
                 ),
@@ -45,18 +43,27 @@ final GoRouter appRouter = GoRouter(
           ],
         ),
 
-        // 2. PORUDŽBINE GRANA
+        // 2. Porudžbine
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: '/orders',
               name: 'orders',
               builder: (context, state) => const OrdersScreen(),
+              routes: [
+                GoRoute(
+                  path: ':id', // /orders/o-1001
+                  name: 'orderDetail',
+                  builder: (context, state) => OrderDetailScreen(
+                    orderId: OrderId(state.pathParameters['id']!),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
 
-        // 3. PROFIL GRANA
+        // 3. Profil
         StatefulShellBranch(
           routes: [
             GoRoute(
