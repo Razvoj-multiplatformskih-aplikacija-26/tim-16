@@ -13,5 +13,6 @@ abstract interface class ShopRepository {
 /// Optional repository capability used by backoffice clients.
 abstract interface class ProductManagementRepository {
   Future<void> deleteProduct(ProductId productId);
+  Future<void> addProduct(Product product);
 }
 

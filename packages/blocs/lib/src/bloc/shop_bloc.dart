@@ -16,11 +16,48 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
     on<CancelOrderEvent>(_onCancelOrder);
     on<ChangeOrderStatusEvent>(_onChangeOrderStatus);
     on<DeleteProductEvent>(_onDeleteProduct);
+    on<AddProductEvent>(_onAddProduct);
   }
 
   final ShopRepository repository;
   final User currentUser;
   final DateTime Function() _clock;
+
+  Future<void> _onAddProduct(AddProductEvent event, Emitter<ShopState> emit) async {
+    final current = state;
+    if (current is! ShopLoaded) return;
+    emit(current.copyWith());
+    final productRepository = repository;
+    if (productRepository is! ProductManagementRepository) {
+      emit(current.copyWith(feedback: const ActionFailed()));
+      return;
+    }
+    final managementRepository = productRepository as ProductManagementRepository;
+    final result = createProduct(
+      id: ProductId('p-${_clock().microsecondsSinceEpoch}'),
+      actor: currentUser,
+      name: event.name,
+      description: event.description,
+      category: event.category,
+      unit: event.unit,
+      priceDinars: event.priceDinars,
+      stockUnits: event.stockUnits,
+    );
+    switch (result) {
+      case Failure(:final error):
+        emit(current.copyWith(feedback: RuleViolated(error)));
+      case Success(:final value):
+        try {
+          await managementRepository.addProduct(value);
+        } catch (_) {
+          emit(current.copyWith(feedback: const ActionFailed()));
+          return;
+        }
+        final latest = state;
+        if (latest is! ShopLoaded) return;
+        emit(latest.copyWith(products: [value, ...latest.products], feedback: ProductAdded(value)));
+    }
+  }
 
   Future<void> _onChangeOrderStatus(ChangeOrderStatusEvent event, Emitter<ShopState> emit) async {
     final current = state;
@@ -86,10 +123,6 @@ Future<void> _onLoad(
     final producers = await repository.loadProducers();
 
     final visible = products.where((p) => p.published).toList();
-    if (visible.isEmpty) {
-      emit(const ShopEmpty());
-      return;
-    }
     emit(
       ShopLoaded(
         products: visible,

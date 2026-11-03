@@ -43,6 +43,11 @@ class DemoShopRepository implements ShopRepository, ProductManagementRepository 
     _products.removeWhere((product) => product.id == productId);
   }
 
+  @override
+  Future<void> addProduct(Product product) async {
+    _products.insert(0, product);
+  }
+
   static User _producer(String id, String name) =>
       User(id: UserId(id), fullName: name, role: UserRole.producer);
 

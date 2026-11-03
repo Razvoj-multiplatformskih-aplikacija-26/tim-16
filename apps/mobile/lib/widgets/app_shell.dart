@@ -19,6 +19,7 @@ class AppShell extends StatelessWidget {
       OrderCancelled() => 'Porudžbina je otkazana.',
       OrderStatusChanged() => 'Status porudzbine je promenjen.',
       ProductDeleted() => 'Proizvod je obrisan.',
+      ProductAdded() => 'Proizvod je dodat u ponudu.',
       RuleViolated(:final error) => error.message,
       ActionFailed() => 'Radnja nije uspela. Pokušajte ponovo.',
     };

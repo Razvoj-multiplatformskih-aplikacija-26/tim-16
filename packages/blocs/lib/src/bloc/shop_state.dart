@@ -38,6 +38,14 @@ final class ProductDeleted extends ShopFeedback {
   List<Object?> get props => [productId];
 }
 
+final class ProductAdded extends ShopFeedback {
+  const ProductAdded(this.product);
+  final Product product;
+
+  @override
+  List<Object?> get props => [product];
+}
+
 /// Domensko pravilo je odbilo akciju. Tekst poruke bira aplikacija.
 final class RuleViolated extends ShopFeedback {
   const RuleViolated(this.error);

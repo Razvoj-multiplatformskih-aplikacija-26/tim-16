@@ -56,3 +56,24 @@ final class DeleteProductEvent extends ShopEvent {
   @override
   List<Object?> get props => [productId];
 }
+
+final class AddProductEvent extends ShopEvent {
+  const AddProductEvent({
+    required this.name,
+    required this.description,
+    required this.category,
+    required this.unit,
+    required this.priceDinars,
+    required this.stockUnits,
+  });
+
+  final String name;
+  final String description;
+  final ProductCategory category;
+  final ProductUnit unit;
+  final int priceDinars;
+  final int stockUnits;
+
+  @override
+  List<Object?> get props => [name, description, category, unit, priceDinars, stockUnits];
+}

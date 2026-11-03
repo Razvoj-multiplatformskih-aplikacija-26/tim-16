@@ -2,6 +2,7 @@
 import 'package:domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../widgets/shortcut.dart';
 
@@ -19,7 +20,14 @@ class ProductsScreen extends StatelessWidget {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Proizvodi', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 8),
-        Text('${products.length} proizvoda u ponudi'),
+        Row(children: [
+          Expanded(child: Text('${products.length} proizvoda u ponudi')),
+          FilledButton.icon(
+            onPressed: () => context.go('/products/new'),
+            icon: const Icon(Icons.add),
+            label: const Text('Dodaj proizvod'),
+          ),
+        ]),
         const Text('Tastatura: ↑/↓ kretanje · Home/End prvi ili poslednji zapis'),
         const SizedBox(height: 24),
         Expanded(child: RecordShortcuts(itemCount: products.length, builder: (context, focusedIndex) => Card(

@@ -15,7 +15,8 @@ class BackofficeShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    final selected = _destinations.indexWhere((item) => item.path == location);
+    final selected = _destinations.indexWhere((item) =>
+        item.path == location || (item.path == '/products' && location.startsWith('/products/')));
     return Scaffold(
       body: Row(
         children: [

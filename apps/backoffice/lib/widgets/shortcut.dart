@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-/// Navigacija kroz zapise tastaturom. Strelice menjaju selekciju,
-/// Home/End skaču na prvi/poslednji zapis, a fokus je vidljiv i bez miša.
 class RecordShortcuts extends StatefulWidget {
   const RecordShortcuts({required this.itemCount, required this.builder, this.onActivate, super.key});
 

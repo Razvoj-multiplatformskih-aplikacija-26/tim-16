@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/orders_screen.dart';
 import 'screens/products_screen.dart';
+import 'screens/add_product_screen.dart';
 import 'widgets/backoffice_shell.dart';
 
 final backofficeRouter = GoRouter(
@@ -20,6 +21,11 @@ final backofficeRouter = GoRouter(
           path: '/products',
           name: 'products',
         builder: (_, _) => const ProductsScreen(),
+        ),
+        GoRoute(
+          path: '/products/new',
+          name: 'add-product',
+          builder: (_, _) => const AddProductScreen(),
         ),
         GoRoute(
           path: '/orders',
