@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+import 'package:blocs/blocs.dart';
+import '../data/demo_shop_repository.dart';
 
 class BackofficeShell extends StatelessWidget {
   const BackofficeShell({required this.child, super.key});
@@ -25,6 +29,21 @@ class BackofficeShell extends StatelessWidget {
           selectedIndex: selected < 0 ? 0 : selected,
           onDestinationSelected: (index) => context.go(_destinations[index].path),
           leading: const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Text('SVEŽKO', style: TextStyle(fontWeight: FontWeight.bold))),
+          trailing: PopupMenuButton<_DebugAction>(
+            icon: const Icon(Icons.bug_report, color: Colors.red),
+            tooltip: 'Izazovi grešku (test)',
+            onSelected: (action) {
+              final repository = context.read<ShopRepository>();
+              if (repository is DemoShopRepository) repository.forceError();
+              if (action == _DebugAction.load) {
+                context.read<ShopBloc>().add(const LoadShopDataEvent());
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: _DebugAction.load, child: Text('Greška pri učitavanju')),
+              PopupMenuItem(value: _DebugAction.save, child: Text('Greška pri sledećem čuvanju')),
+            ],
+          ),
           destinations: [for (final item in _destinations) NavigationRailDestination(icon: Icon(item.icon), label: Text(item.label))],
         ),
         const VerticalDivider(width: 1),
@@ -33,3 +52,5 @@ class BackofficeShell extends StatelessWidget {
     );
   }
 }
+
+enum _DebugAction { load, save }

@@ -4,6 +4,16 @@ import 'package:domain/domain.dart';
 /// Lokalni adapter za pokretanje kostura dok se ne uvede serverski API.
 /// Početni podaci su usklađeni sa mock podacima iz mobilne aplikacije.
 class DemoShopRepository implements ShopRepository, ProductManagementRepository {
+  bool _failNext = false;
+
+  void forceError() => _failNext = true;
+
+  void _throwIfRequested() {
+    if (_failNext) {
+      _failNext = false;
+      throw const DemoRepositoryException();
+    }
+  }
   final List<User> _producers = [
     _producer('pr-1', 'Bojan Matić'),
     _producer('pr-2', 'Gazdinstvo Petrović'),
@@ -20,16 +30,26 @@ class DemoShopRepository implements ShopRepository, ProductManagementRepository 
   late final List<Order> _orders = _seedOrders(_products);
 
   @override
-  Future<List<User>> loadProducers() async => List.unmodifiable(_producers);
+  Future<List<User>> loadProducers() async {
+    _throwIfRequested();
+    return List.unmodifiable(_producers);
+  }
 
   @override
-  Future<List<Product>> loadProducts() async => List.unmodifiable(_products);
+  Future<List<Product>> loadProducts() async {
+    _throwIfRequested();
+    return List.unmodifiable(_products);
+  }
 
   @override
-  Future<List<Order>> loadOrders() async => List.unmodifiable(_orders);
+  Future<List<Order>> loadOrders() async {
+    _throwIfRequested();
+    return List.unmodifiable(_orders);
+  }
 
   @override
   Future<void> saveOrder(Order order) async {
+    _throwIfRequested();
     final index = _orders.indexWhere((existing) => existing.id == order.id);
     if (index == -1) {
       _orders.insert(0, order);
@@ -139,4 +159,11 @@ class DemoShopRepository implements ShopRepository, ProductManagementRepository 
     orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return orders;
   }
+}
+
+class DemoRepositoryException implements Exception {
+  const DemoRepositoryException();
+
+  @override
+  String toString() => 'DemoRepositoryException: namerno izazvana greška';
 }
