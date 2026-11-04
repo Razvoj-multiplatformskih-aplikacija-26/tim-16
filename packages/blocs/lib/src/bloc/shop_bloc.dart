@@ -123,6 +123,10 @@ Future<void> _onLoad(
     final producers = await repository.loadProducers();
 
     final visible = products.where((p) => p.published).toList();
+    if (visible.isEmpty && orders.isEmpty) {
+      emit(const ShopEmpty());
+      return;
+    }
     emit(
       ShopLoaded(
         products: visible,
