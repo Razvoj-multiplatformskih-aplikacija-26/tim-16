@@ -39,7 +39,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Proizvod je dodat u ponudu.')),
           );
-          context.go('/products');
+          context.go('/my-products');
         case RuleViolated(:final error):
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(_domainMessage(error))),
@@ -62,7 +62,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
             key: _formKey,
             child: ListView(children: [
               Row(children: [
-                IconButton(tooltip: 'Nazad na proizvode', onPressed: () => context.go('/products'), icon: const Icon(Icons.arrow_back)),
+                IconButton(tooltip: 'Nazad na proizvode', onPressed: () => context.go('/my-products'), icon: const Icon(Icons.arrow_back)),
                 const SizedBox(width: 8),
                 Text('Dodaj proizvod', style: Theme.of(context).textTheme.headlineMedium),
               ]),

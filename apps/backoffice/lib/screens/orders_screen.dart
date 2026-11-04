@@ -12,7 +12,8 @@ const double _tableBreakpoint = 800;
 const double _detailPanelWidth = 380;
 
 class OrdersScreen extends StatefulWidget {
-  const OrdersScreen({super.key});
+  const OrdersScreen({this.mineOnly = false, super.key});
+  final bool mineOnly;
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -76,12 +77,30 @@ class _OrdersScreenState extends State<OrdersScreen> {
         if (state is ShopLoading) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (state is ShopError) return Center(child: Text(state.message));
+        if (state is ShopError) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(state.message),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () => context
+                      .read<ShopBloc>()
+                      .add(const LoadShopDataEvent()),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Pokušaj ponovo'),
+                ),
+              ],
+            ),
+          );
+        }
         if (state is! ShopLoaded) {
           return const Center(child: Text('Nema porudžbina.'));
         }
 
-        final orders = state.orders;
+        final currentUserId = context.read<ShopBloc>().currentUser.id;
+        final orders = state.orders.where((o) => !widget.mineOnly || o.producerId == currentUserId).toList();
         final selectedIndex = orders.indexWhere((o) => o.id == _selectedId);
         final selected = selectedIndex < 0 ? null : orders[selectedIndex];
         final pending = orders.where((o) => o.status is Pending).length;
@@ -91,7 +110,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Porudžbine',
+              widget.mineOnly ? 'Moje porudžbine' : 'Sve porudžbine',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),
@@ -158,6 +177,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   padding: const EdgeInsets.all(16),
                   child: OrderDetailPanel(
                     order: selected,
+                    canEdit: selected.producerId == context.read<ShopBloc>().currentUser.id,
                     onChangeStatus: () => _changeStatus(selected),
                     onClose: _clearSelection,
                   ),
@@ -202,6 +222,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   child: OrderDetailPanel(
                     order: order,
+                    canEdit: order.producerId == context.read<ShopBloc>().currentUser.id,
                     onChangeStatus: () => _changeStatus(order),
                     onClose: _clearSelection,
                   ),
@@ -216,6 +237,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
   // ---------------------------------------------------------- promena stanja
 
   Future<void> _changeStatus(Order order) async {
+    final currentUserId = context.read<ShopBloc>().currentUser.id;
+    if (order.producerId != currentUserId) return;
     final choices = nextStatuses(order.status);
     if (choices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

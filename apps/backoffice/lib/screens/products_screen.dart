@@ -7,22 +7,35 @@ import 'package:go_router/go_router.dart';
 import '../widgets/shortcut.dart';
 
 class ProductsScreen extends StatelessWidget {
-  const ProductsScreen({super.key});
+  const ProductsScreen({this.mineOnly = false, super.key});
+  final bool mineOnly;
 
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.all(32),
     child: BlocBuilder<ShopBloc, ShopState>(builder: (context, state) {
       if (state is ShopLoading) return const Center(child: CircularProgressIndicator());
-      if (state is ShopError) return Center(child: Text(state.message));
+      if (state is ShopError) return Center(child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(state.message),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => context.read<ShopBloc>().add(const LoadShopDataEvent()),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Pokušaj ponovo'),
+          ),
+        ],
+      ));
       if (state is! ShopLoaded) return const Center(child: Text('Nema proizvoda.'));
-      final products = state.products;
+      final userId = context.read<ShopBloc>().currentUser.id;
+      final products = state.products.where((p) => !mineOnly || p.producerId == userId).toList();
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Proizvodi', style: Theme.of(context).textTheme.headlineMedium),
+        Text(mineOnly ? 'Moji proizvodi' : 'Svi proizvodi', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 8),
         Row(children: [
           Expanded(child: Text('${products.length} proizvoda u ponudi')),
-          FilledButton.icon(
+          if (mineOnly) FilledButton.icon(
             onPressed: () => context.go('/products/new'),
             icon: const Icon(Icons.add),
             label: const Text('Dodaj proizvod'),
@@ -57,7 +70,7 @@ class ProductsScreen extends StatelessWidget {
                 DataCell(Text(_categoryName(products[i].category))),
                 DataCell(Text('${products[i].price.dinars} RSD / ${_unitName(products[i].unit)}')),
                 DataCell(Text('${products[i].stock.units} ${_unitName(products[i].unit)}')),
-                DataCell(IconButton(tooltip: 'Obriši proizvod', icon: const Icon(Icons.delete_outline), onPressed: () => _deleteProduct(context, products[i]))),
+                DataCell(mineOnly && products[i].producerId == userId ? IconButton(tooltip: 'Obriši proizvod', icon: const Icon(Icons.delete_outline), onPressed: () => _deleteProduct(context, products[i])) : const SizedBox.shrink()),
               ])],
           )),
         ))),

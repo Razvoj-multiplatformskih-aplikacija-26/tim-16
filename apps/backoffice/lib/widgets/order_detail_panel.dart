@@ -10,17 +10,19 @@ class OrderDetailPanel extends StatelessWidget {
     required this.order,
     required this.onChangeStatus,
     required this.onClose,
+    this.canEdit = true,
     super.key,
   });
 
   final Order order;
   final VoidCallback onChangeStatus;
   final VoidCallback onClose;
+  final bool canEdit;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final canChange = nextStatuses(order.status).isNotEmpty;
+    final canChange = canEdit && nextStatuses(order.status).isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

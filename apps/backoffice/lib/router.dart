@@ -18,6 +18,11 @@ final backofficeRouter = GoRouter(
         builder: (_, _) => const DashboardScreen(),
         ),
         GoRoute(
+          path: '/my-products',
+          name: 'my-products',
+          builder: (_, _) => const ProductsScreen(mineOnly: true),
+        ),
+        GoRoute(
           path: '/products',
           name: 'products',
         builder: (_, _) => const ProductsScreen(),
@@ -26,6 +31,11 @@ final backofficeRouter = GoRouter(
           path: '/products/new',
           name: 'add-product',
           builder: (_, _) => const AddProductScreen(),
+        ),
+        GoRoute(
+          path: '/my-orders',
+          name: 'my-orders',
+          builder: (_, _) => const OrdersScreen(mineOnly: true),
         ),
         GoRoute(
           path: '/orders',
