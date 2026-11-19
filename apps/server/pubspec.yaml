@@ -1,0 +1,20 @@
+name: server
+description: Svežko HTTP server na Relic-u i PostgreSQL-u koji pokreće ista domenska pravila kao klijenti.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.5
+
+resolution: workspace
+
+dependencies:
+  domain:
+    path: ../../packages/domain
+  postgres: 3.5.18
+  relic: 1.2.0
+
+dev_dependencies:
+  http: 1.6.0
+  lints: ^6.0.0
+  test: 1.31.1
