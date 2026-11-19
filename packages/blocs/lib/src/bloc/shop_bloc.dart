@@ -23,6 +23,26 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
   final User currentUser;
   final DateTime Function() _clock;
 
+  /// Server je odbio akciju pravilom jer je klijent radio nad zastarelim
+  /// podacima. Korisnik vidi razlog (ista poruka kao kada pravilo proveri
+  /// klijent), a ekran se ponovo učita sa podacima po kojima je server odlučio.
+  Future<void> _reloadAfterRejection(DomainError error, Emitter<ShopState> emit) async {
+    final latest = state;
+    if (latest is! ShopLoaded) return;
+    try {
+      final products = await repository.loadProducts();
+      final orders = await repository.loadOrders();
+      emit(latest.copyWith(
+        products: products.where((p) => p.published).toList(),
+        orders: orders,
+        feedback: RuleViolated(error),
+      ));
+    } catch (_) {
+      // Ponovno učitavanje nije uspelo, ali razlog odbijanja i dalje važi.
+      emit(latest.copyWith(feedback: RuleViolated(error)));
+    }
+  }
+
   Future<void> _onAddProduct(AddProductEvent event, Emitter<ShopState> emit) async {
     final current = state;
     if (current is! ShopLoaded) return;
@@ -49,6 +69,9 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
       case Success(:final value):
         try {
           await managementRepository.addProduct(value);
+        } on ActionRejected catch (rejection) {
+          await _reloadAfterRejection(rejection.error, emit);
+          return;
         } catch (_) {
           emit(current.copyWith(feedback: const ActionFailed()));
           return;
@@ -74,6 +97,9 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
       case Success(:final value):
         try {
           await repository.saveOrder(value);
+        } on ActionRejected catch (rejection) {
+          await _reloadAfterRejection(rejection.error, emit);
+          return;
         } catch (_) {
           emit(current.copyWith(feedback: const ActionFailed()));
           return;
@@ -99,6 +125,9 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
     final managementRepository = productRepository as ProductManagementRepository;
     try {
       await managementRepository.deleteProduct(event.productId);
+    } on ActionRejected catch (rejection) {
+      await _reloadAfterRejection(rejection.error, emit);
+      return;
     } catch (_) {
       emit(current.copyWith(feedback: const ActionFailed()));
       return;
@@ -167,6 +196,9 @@ Future<void> _onLoad(
     case Success(:final value):
       try {
         await repository.saveOrder(value);
+      } on ActionRejected catch (rejection) {
+        await _reloadAfterRejection(rejection.error, emit);
+        return;
       } catch (_) {
         emit(current.copyWith(feedback: const ActionFailed()));
         return;
@@ -204,6 +236,9 @@ Future<void> _onLoad(
       case Success(:final value):
         try {
           await repository.saveOrder(value);
+        } on ActionRejected catch (rejection) {
+          await _reloadAfterRejection(rejection.error, emit);
+          return;
         } catch (_) {
           emit(current.copyWith(feedback: const ActionFailed()));
           return;

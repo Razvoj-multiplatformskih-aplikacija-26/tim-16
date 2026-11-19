@@ -77,6 +77,44 @@ class FakeRepo implements ShopRepository {
   }
 }
 
+/// Ponaša se kao server čiji su podaci noviji od klijentovih: prvi
+/// `saveOrder` odbije pravilom, a sledeće učitavanje vraća serversko stanje.
+class LateClientRepo implements ShopRepository {
+  LateClientRepo({required this.products, this.orders = const [], required this.serverProducts, required this.serverOrders, required this.rejection});
+
+  List<Product> products;
+  List<Order> orders;
+  final List<Product> serverProducts;
+  final List<Order> serverOrders;
+  final DomainError rejection;
+  var loads = 0;
+
+  @override
+  Future<List<User>> loadProducers() async => [producer];
+
+  @override
+  Future<List<Product>> loadProducts() async {
+    loads++;
+    return products;
+  }
+
+  @override
+  Future<List<Order>> loadOrders() async => orders;
+
+  @override
+  Future<void> saveOrder(Order order) async {
+    products = serverProducts;
+    orders = serverOrders;
+    throw ActionRejected(rejection);
+  }
+}
+
+ShopBloc makeLateBloc(LateClientRepo repo) => ShopBloc(
+  repository: repo,
+  currentUser: buyer,
+  clock: () => DateTime.utc(2026, 11, 3),
+);
+
 ShopBloc makeBloc(FakeRepo repo) {
   var tick = 0;
   return ShopBloc(
@@ -246,6 +284,51 @@ void main() {
 
       final feedback = state.feedback as RuleViolated;
       expect(feedback.error, isA<OrderNotFound>());
+      await bloc.close();
+    });
+  });
+
+  group('server odbija zakasnelog klijenta', () {
+    test('drugi kupac je uzeo poslednji komad: razlog sa servera i sveži podaci', () async {
+      final repo = LateClientRepo(
+        products: [makeProduct(stock: 1)],
+        serverProducts: [makeProduct(stock: 0)],
+        serverOrders: const [],
+        rejection: const QuantityExceedsStock(requested: 1, available: 0),
+      );
+      final bloc = makeLateBloc(repo)..add(const LoadShopDataEvent());
+      await loaded(bloc);
+
+      // Klijent vidi 1 komad, pa njegova provera pravila prolazi.
+      bloc.add(const CreateOrderEvent(productId: ProductId('p1'), quantity: 1));
+      final state = await withFeedback(bloc);
+
+      final feedback = state.feedback as RuleViolated;
+      expect(feedback.error, isA<QuantityExceedsStock>());
+      expect((feedback.error as QuantityExceedsStock).available, 0);
+      expect(repo.loads, 2, reason: 'posle odbijanja podaci se ponovo učitavaju');
+      expect(state.products.single.stock.units, 0);
+      expect(state.orders, isEmpty);
+      await bloc.close();
+    });
+
+    test('proizvođač je u međuvremenu poslao porudžbinu: otkazivanje odbijeno, vidi se novo stanje', () async {
+      final shipped = makeOrder('o1', Shipped(shippedAt: DateTime.utc(2026, 11, 2)));
+      final repo = LateClientRepo(
+        products: [makeProduct()],
+        orders: [makeOrder('o1', const Pending())],
+        serverProducts: [makeProduct()],
+        serverOrders: [shipped],
+        rejection: CancellationNotAllowed(shipped.status),
+      );
+      final bloc = makeLateBloc(repo)..add(const LoadShopDataEvent());
+      await loaded(bloc);
+
+      bloc.add(const CancelOrderEvent(OrderId('o1')));
+      final state = await withFeedback(bloc);
+
+      expect((state.feedback as RuleViolated).error, isA<CancellationNotAllowed>());
+      expect(state.orders.single.status, isA<Shipped>());
       await bloc.close();
     });
   });

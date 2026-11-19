@@ -16,3 +16,16 @@ abstract interface class ProductManagementRepository {
   Future<void> addProduct(Product product);
 }
 
+/// Repozitorijum baca kada server odbije akciju domenskim pravilom.
+///
+/// Klijent je pravilo već proverio nad svojim podacima, pa odbijanje znači
+/// da su ti podaci zastareli: npr. drugi kupac je u međuvremenu uzeo poslednji
+/// komad. Za razliku od mrežne greške, ovde postoji razlog za korisnika.
+final class ActionRejected implements Exception {
+  const ActionRejected(this.error);
+
+  final DomainError error;
+
+  @override
+  String toString() => 'ActionRejected($error)';
+}

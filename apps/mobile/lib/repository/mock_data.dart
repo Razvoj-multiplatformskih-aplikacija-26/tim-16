@@ -345,8 +345,21 @@ class FakeShopRepository implements ShopRepository {
     await _simulateRequest(latency ~/ 2);
     final index = _orders.indexWhere((o) => o.id == order.id);
     if (index == -1) {
+      // Kao server: nova porudžbina rezerviše zalihu ili biva odbijena pravilom.
+      final reserved = reserveStock(order, _products);
+      if (reserved case Failure(:final error)) throw ActionRejected(error);
+      _products
+        ..clear()
+        ..addAll(reserved.valueOrNull!);
       _orders.insert(0, order);
     } else {
+      // Kao server: otkazana porudžbina vraća rezervisanu zalihu.
+      if (order.status is Cancelled && _orders[index].status is! Cancelled) {
+        final released = releaseStock(order, _products);
+        _products
+          ..clear()
+          ..addAll(released);
+      }
       _orders[index] = order;
     }
   }
