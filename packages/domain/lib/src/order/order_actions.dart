@@ -45,8 +45,9 @@ required User actor,
       };
 
   final error = result.errorOrNull;
-  if(error != null )
+  if (error != null) {
     return Failure<Order>(error);
+  }
 
   return Success<Order>(order.withStatus(to));
 }

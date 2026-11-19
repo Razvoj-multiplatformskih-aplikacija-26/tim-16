@@ -44,6 +44,33 @@ void main() {
     });
   });
 
+  group('releaseStock', () {
+    test('otkazana porudžbina vraća poručenu količinu', () {
+      final order = makeOrder(lines: [makeLine(quantity: 3)]);
+      final updated = releaseStock(order, [makeProduct(stock: 7)]);
+      expect(updated.single.stock.units, 10);
+    });
+
+    test('rezervacija pa otkazivanje vraća zalihu na početnu', () {
+      final products = [makeProduct(stock: 5)];
+      final order = makeOrder(lines: [makeLine(quantity: 5)]);
+      final reserved = reserveStock(order, products).valueOrNull!;
+      expect(releaseStock(order, reserved).single.stock.units, 5);
+    });
+
+    test('ne dira proizvode koji nisu u porudžbini', () {
+      final order = makeOrder(lines: [makeLine(productId: 'p1', quantity: 3)]);
+      final updated = releaseStock(order, [makeProduct(id: 'p1'), makeProduct(id: 'p2', stock: 4)]);
+      expect(updated.last.stock.units, 4);
+    });
+
+    test('zaliha ne prelazi maksimum', () {
+      final order = makeOrder(lines: [makeLine(quantity: 5)]);
+      final updated = releaseStock(order, [makeProduct(stock: Stock.max - 1)]);
+      expect(updated.single.stock.units, Stock.max);
+    });
+  });
+
   group('allocateStock', () {
     test('ostao je jedan komad, dva kupca: prvi dobija', () {
       final products = [makeProduct(stock: 1)];

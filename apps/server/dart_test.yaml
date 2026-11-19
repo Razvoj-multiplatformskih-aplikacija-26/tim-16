@@ -1,0 +1,3 @@
+tags:
+  # Testovi koji traže pokrenutu bazu: docker compose up -d db
+  db:

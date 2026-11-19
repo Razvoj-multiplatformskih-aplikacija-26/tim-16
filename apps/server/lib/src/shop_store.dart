@@ -21,6 +21,16 @@ final class ShopStore {
     return pool.runTx((transaction) => work(ShopStore._inTransaction(transaction)));
   }
 
+  /// Zaključava red korisnika do kraja transakcije. Tako se dve porudžbine
+  /// istog kupca (npr. sa telefona i iz pregledača) obrađuju jedna za drugom,
+  /// pa pravilo o najviše 5 aktivnih porudžbina važi i kada stignu istovremeno.
+  Future<void> lockUser(UserId id) async {
+    await _database.execute(
+      Sql.named('SELECT 1 FROM users WHERE id = @id FOR UPDATE'),
+      parameters: {'id': id.value},
+    );
+  }
+
   Future<User?> user(UserId id) async {
     final rows = await _database.execute(
       Sql.named('SELECT id, full_name, role FROM users WHERE id = @id'),
@@ -43,21 +53,29 @@ final class ShopStore {
   Future<List<Product>> productsOf(UserId producerId) =>
       _products(where: 'producer_id = @producer', parameters: {'producer': producerId.value});
 
-  Future<Product?> product(ProductId id) async {
-    final found = await _products(where: 'id = @id', parameters: {'id': id.value});
+  /// Sa [forUpdate] red ostaje zaključan do kraja transakcije: drugi zahtev
+  /// koji menja isti proizvod čeka i posle toga čita već izmenjenu zalihu.
+  Future<Product?> product(ProductId id, {bool forUpdate = false}) async {
+    final found = await _products(
+      where: 'id = @id',
+      parameters: {'id': id.value},
+      forUpdate: forUpdate,
+    );
     return found.isEmpty ? null : found.single;
   }
 
-  Future<List<Product>> productsByIds(Iterable<ProductId> ids) => _products(
+  Future<List<Product>> productsByIds(Iterable<ProductId> ids, {bool forUpdate = false}) => _products(
     where: 'id = ANY(@ids)',
     parameters: {
       'ids': TypedValue(Type.textArray, [for (final id in ids) id.value]),
     },
+    forUpdate: forUpdate,
   );
 
   Future<List<Product>> _products({
     required String where,
     required Map<String, Object?> parameters,
+    bool forUpdate = false,
   }) async {
     final rows = await _database.execute(
       Sql.named('''
@@ -65,7 +83,7 @@ final class ShopStore {
                price_dinars, stock_units, published, image_url
         FROM products
         WHERE $where
-        ORDER BY created_at, id
+        ${forUpdate ? 'ORDER BY id FOR UPDATE' : 'ORDER BY created_at, id'}
       '''),
       parameters: parameters,
     );
@@ -78,14 +96,19 @@ final class ShopStore {
   Future<List<Order>> ordersOfProducer(UserId producerId) =>
       _orders(where: 'o.producer_id = @user', parameters: {'user': producerId.value});
 
-  Future<Order?> order(OrderId id) async {
-    final found = await _orders(where: 'o.id = @id', parameters: {'id': id.value});
+  Future<Order?> order(OrderId id, {bool forUpdate = false}) async {
+    final found = await _orders(
+      where: 'o.id = @id',
+      parameters: {'id': id.value},
+      forUpdate: forUpdate,
+    );
     return found.isEmpty ? null : found.single;
   }
 
   Future<List<Order>> _orders({
     required String where,
     required Map<String, Object?> parameters,
+    bool forUpdate = false,
   }) async {
     final rows = await _database.execute(
       Sql.named('''
@@ -96,6 +119,7 @@ final class ShopStore {
         JOIN order_lines l ON l.order_id = o.id
         WHERE $where
         ORDER BY o.created_at DESC, o.id, l.position
+        ${forUpdate ? 'FOR UPDATE OF o' : ''}
       '''),
       parameters: parameters,
     );

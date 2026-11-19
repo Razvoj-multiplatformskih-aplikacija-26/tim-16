@@ -12,6 +12,12 @@ import 'wire.dart';
 
 /// Rukovaoci zahteva.
 ///
+/// Kada dva klijenta istovremeno traže isto (poslednji komad, ista porudžbina),
+/// konačno odlučuje server: u transakciji zaključa redove koje menja
+/// (`SELECT … FOR UPDATE`), pa drugi zahtev čeka prvi i tek onda proverava
+/// pravilo nad već izmenjenim podacima. `CHECK (stock_units >= 0)` u bazi je
+/// poslednja zaštita ako bi neki budući upis zaobišao ovaj put.
+///
 /// Svaki upis ide istim redom: pročitaj sveže podatke iz baze, pozovi
 /// **istu domensku funkciju** koju zove i klijent (`placeOrder`,
 /// `changeOrderStatus`, `cancelOrder`, `createProduct`, `updatePrice`,
@@ -76,7 +82,13 @@ final class ShopHandlers {
     if (address case Failure(:final error)) return domainProblem(error);
 
     return store.transaction((store) async {
-      final catalog = await store.productsByIds({for (final line in lines) line.productId});
+      // Redosled zaključavanja je uvek isti (kupac, pa proizvodi po id-u),
+      // pa dve transakcije ne mogu da čekaju jedna drugu u krug.
+      await store.lockUser(actor.id);
+      final catalog = await store.productsByIds(
+        {for (final line in lines) line.productId},
+        forUpdate: true,
+      );
       final placed = domain.placeOrder(
         id: OrderId('o-${_token()}'),
         buyer: actor,
@@ -130,13 +142,24 @@ final class ShopHandlers {
     Result<Order> Function(Order order) change,
   ) => store.transaction((store) async {
     final id = OrderId(request.rawPathParameters[#id]!);
-    final order = await store.order(id);
+    final order = await store.order(id, forUpdate: true);
     // Tuđa porudžbina se ne razlikuje od nepostojeće: ne otkrivamo da postoji.
     if (order == null || !canViewOrder(actor, order)) return domainProblem(OrderNotFound(id));
     final changed = change(order);
     if (changed case Failure(:final error)) return domainProblem(error);
-    await store.updateOrderStatus(changed.valueOrNull!);
-    return json(200, orderJson(changed.valueOrNull!));
+    final updated = changed.valueOrNull!;
+    await store.updateOrderStatus(updated);
+    if (updated.status is Cancelled) {
+      // Otkazana porudžbina vraća rezervisanu zalihu (domen, `releaseStock`).
+      final products = await store.productsByIds(
+        {for (final line in updated.lines) line.productId},
+        forUpdate: true,
+      );
+      for (final product in releaseStock(updated, products)) {
+        await store.updateProduct(product);
+      }
+    }
+    return json(200, orderJson(updated));
   });
 
   // Proizvodi (proizvođač).
@@ -188,7 +211,7 @@ final class ShopHandlers {
     final body = await readObject(request);
     return store.transaction((store) async {
       final id = ProductId(request.rawPathParameters[#id]!);
-      final product = await store.product(id);
+      final product = await store.product(id, forUpdate: true);
       if (product == null) return domainProblem(ProductNotFound(id));
       final changed = change(product, body, actor);
       if (changed case Failure(:final error)) return domainProblem(error);

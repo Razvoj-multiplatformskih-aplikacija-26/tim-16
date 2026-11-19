@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:domain/src/result.dart';
 
 import '../errors.dart';
@@ -46,6 +48,22 @@ Result<List<Product>> reserveStock(Order order,List<Product>products)
   }
 
   return Success<List<Product>>([for (final p in products) updated[p.id] ?? p]);
+}
+
+/// Otkazana porudžbina vraća zalihu koju je rezervisala pri poručivanju.
+/// Proizvod koji više ne postoji u [products] se preskače, a zaliha ne može
+/// da pređe [Stock.max].
+List<Product> releaseStock(Order order, List<Product> products) {
+  final returned = _quantitiesByProduct(order);
+  return [
+    for (final product in products)
+      if (returned[product.id] case final units?)
+        product.copyWith(
+          stock: Stock.parse(min(product.stock.units + units, Stock.max)).valueOrNull!,
+        )
+      else
+        product,
+  ];
 }
 
 sealed class StockDecision {

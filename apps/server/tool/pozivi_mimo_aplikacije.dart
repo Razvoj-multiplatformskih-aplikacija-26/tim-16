@@ -74,7 +74,7 @@ Future<void> call(
   Map<String, Object?>? body,
 }) async {
   final request = http.Request(method, base.replace(path: path))
-    ..headers.addAll({'Content-Type': 'application/json', if (user != null) 'X-User-Id': user});
+    ..headers.addAll({'Content-Type': 'application/json', 'X-User-Id': ?user});
   if (body != null) request.body = jsonEncode(body);
   final response = await http.Response.fromStream(await request.send());
   stdout
