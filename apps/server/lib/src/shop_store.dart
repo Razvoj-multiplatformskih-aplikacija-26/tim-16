@@ -5,9 +5,21 @@ import 'package:postgres/postgres.dart';
 /// domenski model kroz iste `parse` funkcije koje koriste i klijenti, pa
 /// server radi sa istim tipovima i pravilima kao mobilna aplikacija i backoffice.
 final class ShopStore {
-  const ShopStore(this._database);
+  ShopStore(Pool<void> pool) : _database = pool, _pool = pool;
+
+  ShopStore._inTransaction(TxSession transaction)
+    : _database = transaction,
+      _pool = null;
 
   final Session _database;
+  final Pool<void>? _pool;
+
+  /// Izvršava [work] u jednoj transakciji: ili se upiše sve, ili ništa.
+  Future<T> transaction<T>(Future<T> Function(ShopStore store) work) {
+    final pool = _pool;
+    if (pool == null) return work(this);
+    return pool.runTx((transaction) => work(ShopStore._inTransaction(transaction)));
+  }
 
   Future<User?> user(UserId id) async {
     final rows = await _database.execute(
@@ -35,6 +47,13 @@ final class ShopStore {
     final found = await _products(where: 'id = @id', parameters: {'id': id.value});
     return found.isEmpty ? null : found.single;
   }
+
+  Future<List<Product>> productsByIds(Iterable<ProductId> ids) => _products(
+    where: 'id = ANY(@ids)',
+    parameters: {
+      'ids': TypedValue(Type.textArray, [for (final id in ids) id.value]),
+    },
+  );
 
   Future<List<Product>> _products({
     required String where,
@@ -81,6 +100,105 @@ final class ShopStore {
       parameters: parameters,
     );
     return ordersFromRows([for (final row in rows) row.toColumnMap()]);
+  }
+
+  // Upisi. Pozivaju se tek kada domenska pravila dozvole izmenu.
+
+  Future<void> insertOrder(Order order) async {
+    final columns = orderStatusColumns(order.status);
+    await _database.execute(
+      Sql.named('''
+        INSERT INTO orders (id, buyer_id, producer_id, status, status_at, cancel_reason, method, address, created_at)
+        VALUES (@id, @buyer, @producer, @status, @statusAt, @reason, @method, @address, @created)
+      '''),
+      parameters: {
+        'id': order.id.value,
+        'buyer': order.buyerId.value,
+        'producer': order.producerId.value,
+        'status': columns.status,
+        'statusAt': columns.at?.toUtc(),
+        'reason': columns.cancelReason,
+        'method': order.method.name,
+        'address': order.address?.value,
+        'created': order.createdAt.toUtc(),
+      },
+    );
+    for (final (position, line) in order.lines.indexed) {
+      await _database.execute(
+        Sql.named('''
+          INSERT INTO order_lines (order_id, position, product_id, product_name, unit_price_dinars, quantity)
+          VALUES (@order, @position, @product, @name, @price, @quantity)
+        '''),
+        parameters: {
+          'order': order.id.value,
+          'position': position,
+          'product': line.productId.value,
+          'name': line.productName,
+          'price': line.unitPrice.dinars,
+          'quantity': line.quantity.value,
+        },
+      );
+    }
+  }
+
+  Future<void> updateOrderStatus(Order order) async {
+    final columns = orderStatusColumns(order.status);
+    await _database.execute(
+      Sql.named('''
+        UPDATE orders SET status = @status, status_at = @statusAt, cancel_reason = @reason
+        WHERE id = @id
+      '''),
+      parameters: {
+        'id': order.id.value,
+        'status': columns.status,
+        'statusAt': columns.at?.toUtc(),
+        'reason': columns.cancelReason,
+      },
+    );
+  }
+
+  Future<void> insertProduct(Product product) async {
+    await _database.execute(
+      Sql.named('''
+        INSERT INTO products (id, producer_id, name, description, category, unit, price_dinars, stock_units, published, image_url)
+        VALUES (@id, @producer, @name, @description, @category, @unit, @price, @stock, @published, @image)
+      '''),
+      parameters: {
+        'id': product.id.value,
+        'producer': product.producerId.value,
+        'name': product.name.value,
+        'description': product.description,
+        'category': product.category.name,
+        'unit': product.unit.name,
+        'price': product.price.dinars,
+        'stock': product.stock.units,
+        'published': product.published,
+        'image': product.imageUrl,
+      },
+    );
+  }
+
+  /// Upisuje cenu, zalihu i objavljenost proizvoda.
+  Future<void> updateProduct(Product product) async {
+    await _database.execute(
+      Sql.named('''
+        UPDATE products SET price_dinars = @price, stock_units = @stock, published = @published
+        WHERE id = @id
+      '''),
+      parameters: {
+        'id': product.id.value,
+        'price': product.price.dinars,
+        'stock': product.stock.units,
+        'published': product.published,
+      },
+    );
+  }
+
+  Future<void> deleteProduct(ProductId id) async {
+    await _database.execute(
+      Sql.named('DELETE FROM products WHERE id = @id'),
+      parameters: {'id': id.value},
+    );
   }
 }
 

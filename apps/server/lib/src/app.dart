@@ -7,9 +7,21 @@ import 'http.dart';
 Handler buildHandler(ShopHandlers handlers) {
   final router = RelicRouter()
     ..get('/health', (request) => Response.ok(body: Body.fromString('ok')))
+    // Javno, bez prijave.
     ..get('/producers', handlers.producers)
     ..get('/products', handlers.products)
     ..get('/products/:id', handlers.product)
+    // Kupac i proizvođač (zaglavlje X-User-Id do uvođenja prijave).
+    ..get('/orders', handlers.orders)
+    ..post('/orders', handlers.placeOrder)
+    ..post('/orders/:id/status', handlers.changeStatus)
+    ..post('/orders/:id/cancellation', handlers.cancel)
+    // Proizvođač.
+    ..get('/my/products', handlers.myProducts)
+    ..post('/products', handlers.createProduct)
+    ..post('/products/:id/price', handlers.changePrice)
+    ..post('/products/:id/stock', handlers.changeStock)
+    ..delete('/products/:id', handlers.deleteProduct)
     ..fallback = respondWith(
       (request) => problem(status: 404, code: 'not_found', title: 'Nepostojeća ruta'),
     );
