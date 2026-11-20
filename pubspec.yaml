@@ -8,5 +8,6 @@ workspace:
   - apps/mobile
   - apps/backoffice
   - apps/server
+  - packages/contract
   - packages/domain
   - packages/blocs
