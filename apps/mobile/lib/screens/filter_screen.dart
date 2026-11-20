@@ -83,7 +83,7 @@ class _FilterScreenState extends State<FilterScreen> {
               ),
               subtitle: const Text('Sakrij proizvode kojih trenutno nema na stanju'),
               value: _onlyAvailable,
-              activeColor: colorScheme.primary,
+              activeThumbColor: colorScheme.primary,
               contentPadding: EdgeInsets.zero,
               onChanged: (value) {
                 setState(() {

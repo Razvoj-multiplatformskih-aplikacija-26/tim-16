@@ -169,7 +169,7 @@ class ProductCard extends StatelessWidget {
       child: Icon(
         Icons.image_not_supported_outlined,
         size: 48,
-        color: colorScheme.primary.withOpacity(0.5),
+        color: colorScheme.primary.withValues(alpha: 0.5),
       ),
     );
   }

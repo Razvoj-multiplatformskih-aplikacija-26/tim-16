@@ -15,18 +15,20 @@ class ProductsScreen extends StatelessWidget {
     padding: const EdgeInsets.all(32),
     child: BlocBuilder<ShopBloc, ShopState>(builder: (context, state) {
       if (state is ShopLoading) return const Center(child: CircularProgressIndicator());
-      if (state is ShopError) return Center(child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(state.message),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: () => context.read<ShopBloc>().add(const LoadShopDataEvent()),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Pokušaj ponovo'),
-          ),
-        ],
-      ));
+      if (state is ShopError) {
+        return Center(child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(state.message),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => context.read<ShopBloc>().add(const LoadShopDataEvent()),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Pokušaj ponovo'),
+            ),
+          ],
+        ));
+      }
       if (state is! ShopLoaded) return const Center(child: Text('Nema proizvoda.'));
       final userId = context.read<ShopBloc>().currentUser.id;
       final products = state.products.where((p) => !mineOnly || p.producerId == userId).toList();

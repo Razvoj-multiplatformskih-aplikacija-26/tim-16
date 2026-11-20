@@ -1,4 +1,4 @@
-library blocs;
+library;
 
 export 'src/repository/shop_repository.dart';
 export 'src/bloc/shop_state.dart';

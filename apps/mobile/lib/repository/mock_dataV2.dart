@@ -1,3 +1,6 @@
+// Ime fajla ostaje kako je zbog postojećih referenci iz KT1.
+// ignore_for_file: file_names
+
 
 import 'package:blocs/blocs.dart';
 import 'package:domain/domain.dart';

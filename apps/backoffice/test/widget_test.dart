@@ -1,31 +1,52 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
+import 'package:blocs/blocs.dart';
+import 'package:domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:svezko_backoffice/app.dart';
+import 'package:svezko_backoffice/data/demo_shop_repository.dart';
 
-import 'package:svezko_backoffice/main.dart';
+// Zamenjuje podrazumevani test brojača iz `flutter create`, koji nije
+// odgovarao aplikaciji. Proverava da se demo repozitorijum ponaša kao server.
+
+Order orderOf(Product product, int quantity) => Order(
+  id: const OrderId('o-test'),
+  buyerId: const UserId('u-buyer-1'),
+  producerId: product.producerId,
+  lines: [
+    OrderLine(
+      productId: product.id,
+      productName: product.name.value,
+      unitPrice: product.price,
+      quantity: Quantity.parse(quantity, available: quantity).valueOrNull!,
+    ),
+  ],
+  status: const Pending(),
+  createdAt: DateTime.utc(2026, 11, 20),
+  method: DeliveryMethod.pickup,
+);
+
+Future<Product> cheese(DemoShopRepository repo) async =>
+    (await repo.loadProducts()).firstWhere((p) => p.id == const ProductId('p3'));
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const SvezkoBackofficeApp());
+  test('porudžbina veća od zalihe se odbija pravilom, kao na serveru', () async {
+    final repo = DemoShopRepository();
+    final product = await cheese(repo);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await expectLater(
+      repo.saveOrder(orderOf(product, product.stock.units + 1)),
+      throwsA(isA<ActionRejected>()),
+    );
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('porudžbina rezerviše zalihu, a otkazivanje je vraća', () async {
+    final repo = DemoShopRepository();
+    final product = await cheese(repo);
+    final before = product.stock.units;
+    final order = orderOf(product, 1);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await repo.saveOrder(order);
+    expect((await cheese(repo)).stock.units, before - 1);
+
+    await repo.saveOrder(order.withStatus(const Cancelled(CancelReason.byBuyer)));
+    expect((await cheese(repo)).stock.units, before);
   });
 }
