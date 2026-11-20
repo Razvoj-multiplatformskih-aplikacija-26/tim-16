@@ -1,0 +1,19 @@
+name: mapping
+description: Jedino mesto gde se ugovor (contract) prevodi u domen i nazad, i za greške. Koriste ga klijenti i server.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.5
+
+resolution: workspace
+
+dependencies:
+  contract:
+    path: ../contract
+  domain:
+    path: ../domain
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: 1.31.1
