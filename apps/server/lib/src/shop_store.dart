@@ -1,6 +1,10 @@
 import 'package:domain/domain.dart';
 import 'package:postgres/postgres.dart';
 
+import 'paging.dart';
+
+typedef ProductRow = ({Product product, DateTime createdAt});
+
 /// Čitanje i upis podataka u PostgreSQL. Svaki red iz baze se pretvara u
 /// domenski model kroz iste `parse` funkcije koje koriste i klijenti, pa
 /// server radi sa istim tipovima i pravilima kao mobilna aplikacija i backoffice.
@@ -89,6 +93,76 @@ final class ShopStore {
     );
     return [for (final row in rows) productFromRow(row.toColumnMap())];
   }
+
+  Future<List<ProductRow>> publishedProductsPage({required int limit, Position? after}) =>
+      _productPage(where: 'published', parameters: const {}, limit: limit, after: after);
+
+  Future<List<ProductRow>> productsOfPage(UserId producerId, {required int limit, Position? after}) =>
+      _productPage(
+        where: 'producer_id = @producer',
+        parameters: {'producer': producerId.value},
+        limit: limit,
+        after: after,
+      );
+
+  Future<List<ProductRow>> _productPage({
+    required String where,
+    required Map<String, Object?> parameters,
+    required int limit,
+    Position? after,
+  }) async {
+    final rows = await _database.execute(
+      Sql.named('''
+        SELECT id, producer_id, name, description, category, unit,
+               price_dinars, stock_units, published, image_url, created_at
+        FROM products
+        WHERE $where
+        ${after == null ? '' : 'AND (created_at, id) > (@afterAt, @afterId)'}
+        ORDER BY created_at, id
+        LIMIT @limit
+      '''),
+      parameters: {...parameters, ..._pageParameters(limit, after)},
+    );
+    return [
+      for (final columns in rows.map((row) => row.toColumnMap()))
+        (product: productFromRow(columns), createdAt: (columns['created_at'] as DateTime).toUtc()),
+    ];
+  }
+
+  Future<List<Order>> ordersPage(User actor, {required int limit, Position? after}) async {
+    final participant = switch (actor.role) {
+      UserRole.buyer => 'buyer_id',
+      UserRole.producer => 'producer_id',
+    };
+    final rows = await _database.execute(
+      Sql.named('''
+        WITH page AS (
+          SELECT id FROM orders
+          WHERE $participant = @user
+          ${after == null ? '' : 'AND (created_at < @afterAt OR (created_at = @afterAt AND id > @afterId))'}
+          ORDER BY created_at DESC, id
+          LIMIT @limit
+        )
+        SELECT o.id, o.buyer_id, o.producer_id, o.status, o.status_at,
+               o.cancel_reason, o.method, o.address, o.created_at,
+               l.product_id, l.product_name, l.unit_price_dinars, l.quantity
+        FROM page
+        JOIN orders o ON o.id = page.id
+        JOIN order_lines l ON l.order_id = o.id
+        ORDER BY o.created_at DESC, o.id, l.position
+      '''),
+      parameters: {'user': actor.id.value, ..._pageParameters(limit, after)},
+    );
+    return ordersFromRows([for (final row in rows) row.toColumnMap()]);
+  }
+
+  Map<String, Object?> _pageParameters(int limit, Position? after) => {
+    'limit': TypedValue(Type.integer, limit),
+    if (after != null) ...{
+      'afterAt': TypedValue(Type.timestampTz, after.at),
+      'afterId': TypedValue(Type.text, after.id),
+    },
+  };
 
   Future<List<Order>> ordersOfBuyer(UserId buyerId) =>
       _orders(where: 'o.buyer_id = @user', parameters: {'user': buyerId.value});

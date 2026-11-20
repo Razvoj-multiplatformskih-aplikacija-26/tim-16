@@ -9,13 +9,16 @@ Future<void> main() async {
   final config = ServerConfig.fromEnvironment(serverEnvironment());
   final database = Pool<void>.withUrl(config.databaseUrl);
   final store = ShopStore(database);
-  final handlers = ShopHandlers(store: store);
+  final handlers = ShopHandlers(store: store, lineLimit: config.lineLimit);
 
   final server = RelicServer(
     () => IOAdapter.bind(InternetAddress(config.host), port: config.port),
   );
   await server.mountAndStart(buildHandler(handlers));
   stdout.writeln('Svežko server na http://${config.host}:${config.port}');
+  if (config.lineLimit case final limit?) {
+    stdout.writeln('Novo pravilo: najviše $limit po stavci porudžbine');
+  }
 
   await _stopSignal();
   await server.close();

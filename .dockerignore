@@ -1,6 +1,8 @@
 *
 !pubspec.lock
+!packages/contract
 !packages/domain
+!packages/mapping
 !apps/server
 **/.dart_tool
 **/build

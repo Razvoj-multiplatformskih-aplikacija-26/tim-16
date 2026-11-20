@@ -51,12 +51,12 @@ Future<void> main() async {
   await call(
     'Cena van opsega',
     'POST', '/products/p1/price', user: 'pr-1',
-    body: {'priceDinars': 0},
+    body: {'price': {'amount': 0, 'currency': 'RSD'}},
   );
   await call(
     'Proizvođač menja cenu tuđeg proizvoda',
     'POST', '/products/p1/price', user: 'pr-2',
-    body: {'priceDinars': 200},
+    body: {'price': {'amount': 200, 'currency': 'RSD'}},
   );
   await call(
     'Negativna zaliha',

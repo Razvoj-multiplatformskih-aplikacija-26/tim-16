@@ -37,7 +37,7 @@ Future<void> main(List<String> args) async {
     stdout.writeln('$buyer → ${answer.statusCode}  ${answer.body}\n');
   }
   final product = await http.get(base.replace(path: '/products/p10'));
-  stdout.writeln('Zaliha posle: ${(jsonDecode(product.body) as Map)['stockUnits']}');
+  stdout.writeln('Zaliha posle: ${(jsonDecode(product.body) as Map)['availableUnits']}');
 
   if (args.contains('--zadrzi')) return;
   for (final (buyer, answer) in [('u-buyer-1', answers[0]), ('u-buyer-2', answers[1])]) {

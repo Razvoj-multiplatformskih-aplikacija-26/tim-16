@@ -5,6 +5,7 @@ final class ServerConfig {
     required this.host,
     required this.port,
     required this.databaseUrl,
+    this.lineLimit,
   });
 
   factory ServerConfig.fromEnvironment(Map<String, String> environment) =>
@@ -16,9 +17,12 @@ final class ServerConfig {
             (throw StateError(
               'DATABASE_URL nije podešen. Kopiraj .env.example u .env u korenu repozitorijuma.',
             )),
+        lineLimit: int.tryParse(environment['NOVO_PRAVILO_NAJVISE_PO_STAVCI'] ?? ''),
       );
 
   final String host;
   final int port;
   final String databaseUrl;
+
+  final int? lineLimit;
 }

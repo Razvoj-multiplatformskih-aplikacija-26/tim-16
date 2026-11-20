@@ -1,14 +1,16 @@
 import 'dart:math';
 
+import 'package:contract/contract.dart';
 import 'package:domain/domain.dart';
 import 'package:domain/domain.dart' as domain;
+import 'package:mapping/mapping.dart';
 import 'package:relic/relic.dart' hide Result;
 
 import 'actor.dart';
 import 'http.dart';
+import 'paging.dart';
 import 'problems.dart';
 import 'shop_store.dart';
-import 'wire.dart';
 
 /// Rukovaoci zahteva.
 ///
@@ -25,61 +27,75 @@ import 'wire.dart';
 /// pravila da bi korisnik odmah video grešku, ali konačno odlučuje server,
 /// pa i poziv mimo aplikacije (curl, skripta) prolazi kroz ista pravila.
 final class ShopHandlers {
-  ShopHandlers({required this.store, DateTime Function()? clock})
+  ShopHandlers({required this.store, DateTime Function()? clock, this.lineLimit})
     : _clock = clock ?? DateTime.now;
 
   final ShopStore store;
   final DateTime Function() _clock;
   final _random = Random.secure();
 
+  final int? lineLimit;
+  static const lineLimitCode = 'quantity_above_line_limit';
+
   // Javno, bez prijave.
 
-  Future<Response> producers(Request request) async =>
-      json(200, [for (final user in await store.producers()) userJson(user)]);
-
-  Future<Response> products(Request request) async => json(200, [
-    for (final product in await store.publishedProducts()) productJson(product),
+  Future<Response> producers(Request request) async => json(200, [
+    for (final user in await store.producers()) producerToDto(user).toJson(),
   ]);
+
+  Future<Response> products(Request request) async {
+    final page = await pageOf(
+      PageRequest.fromQuery(request.url.queryParameters),
+      fetch: (limit, after) => store.publishedProductsPage(limit: limit, after: after),
+      positionOf: (row) => (at: row.createdAt, id: row.product.id.value),
+      encode: (row) => productToDto(row.product),
+    );
+    return json(200, page.toJson((item) => item.toJson()));
+  }
 
   Future<Response> product(Request request) async {
     final id = ProductId(request.rawPathParameters[#id]!);
     final found = await store.product(id);
     if (found == null || !found.published) return domainProblem(ProductNotFound(id));
-    return json(200, productJson(found));
+    return json(200, productToDto(found).toJson());
   }
 
   // Porudžbine.
 
   /// Kupac vidi svoje porudžbine, a proizvođač one iz svoje ponude.
   Future<Response> orders(Request request) => _signedIn(request, (actor) async {
-    final orders = switch (actor.role) {
-      UserRole.buyer => await store.ordersOfBuyer(actor.id),
-      UserRole.producer => await store.ordersOfProducer(actor.id),
-    };
-    return json(200, [
-      for (final order in orders)
-        if (canViewOrder(actor, order)) orderJson(order),
-    ]);
+    final page = await pageOf(
+      PageRequest.fromQuery(request.url.queryParameters),
+      fetch: (limit, after) async => [
+        for (final order in await store.ordersPage(actor, limit: limit, after: after))
+          if (canViewOrder(actor, order)) order,
+      ],
+      positionOf: (order) => (at: order.createdAt, id: order.id.value),
+      encode: orderToDto,
+    );
+    return json(200, page.toJson((item) => item.toJson()));
   });
 
   Future<Response> placeOrder(Request request) => _signedIn(request, (actor) async {
-    final body = await readObject(request);
-    final lines = [
-      for (final item in field<List<Object?>>(body, 'lines'))
-        switch (item) {
-          final Map<String, Object?> line => OrderRequestLine(
-            productId: ProductId(field<String>(line, 'productId')),
-            quantity: field<int>(line, 'quantity'),
-          ),
-          _ => throw const FormatException('Stavka porudžbine mora biti objekat'),
-        },
-    ];
-    final method = enumField(body, 'method', DeliveryMethod.values);
-    final address = switch (optionalField<String>(body, 'address')) {
+    final body = PlaceOrderRequest.fromJson(await readObject(request));
+    final lines = orderRequestLinesOf(body);
+    final method = methodFromCode(body.method);
+    final address = switch (body.address) {
       null => null,
       final raw => DeliveryAddress.parse(raw),
     };
     if (address case Failure(:final error)) return domainProblem(error);
+
+    if (lineLimit case final limit? when lines.any((line) => line.quantity > limit)) {
+      return problemResponse(
+        ProblemDto(
+          status: 422,
+          code: lineLimitCode,
+          params: {'limit': limit},
+          title: 'Najviše $limit po stavci (novo pravilo na serveru)',
+        ),
+      );
+    }
 
     return store.transaction((store) async {
       // Redosled zaključavanja je uvek isti (kupac, pa proizvodi po id-u),
@@ -109,24 +125,15 @@ final class ShopHandlers {
       for (final product in reserved.valueOrNull!) {
         await store.updateProduct(product);
       }
-      return json(201, orderJson(order));
+      return json(201, orderToDto(order).toJson());
     });
   });
 
   /// Proizvođač pomera porudžbinu napred: accepted, preparing, shipped, delivered.
   /// Vreme prihvatanja i slanja postavlja server, ne klijent.
   Future<Response> changeStatus(Request request) => _signedIn(request, (actor) async {
-    final body = await readObject(request);
-    final now = _clock().toUtc();
-    final OrderStatus target = switch (field<String>(body, 'status')) {
-      'accepted' => Accepted(acceptedAt: now),
-      'preparing' => const Preparing(),
-      'shipped' => Shipped(shippedAt: now),
-      'delivered' => const Delivered(),
-      final other => throw FormatException(
-        'Stanje "$other" ne postoji ili se ne menja ovom rutom (otkazivanje: /orders/:id/cancellation)',
-      ),
-    };
+    final body = ChangeStatusRequest.fromJson(await readObject(request));
+    final target = targetStatusOf(body, now: _clock().toUtc());
     return _changeOrder(request, actor, (order) => changeOrderStatus(order, target, actor: actor));
   });
 
@@ -159,7 +166,7 @@ final class ShopHandlers {
         await store.updateProduct(product);
       }
     }
-    return json(200, orderJson(updated));
+    return json(200, orderToDto(updated).toJson());
   });
 
   // Proizvodi (proizvođač).
@@ -167,32 +174,39 @@ final class ShopHandlers {
   /// Svi proizvodi prijavljenog proizvođača, i neobjavljeni.
   Future<Response> myProducts(Request request) => _signedIn(request, (actor) async {
     if (actor.role != UserRole.producer) return domainProblem(NotAuthorized(actor.id));
-    return json(200, [for (final product in await store.productsOf(actor.id)) productJson(product)]);
+    final page = await pageOf(
+      PageRequest.fromQuery(request.url.queryParameters),
+      fetch: (limit, after) => store.productsOfPage(actor.id, limit: limit, after: after),
+      positionOf: (row) => (at: row.createdAt, id: row.product.id.value),
+      encode: (row) => productToDto(row.product, ownerView: true),
+    );
+    return json(200, page.toJson((item) => item.toJson()));
   });
 
   Future<Response> createProduct(Request request) => _signedIn(request, (actor) async {
-    final body = await readObject(request);
+    final body = CreateProductRequest.fromJson(await readObject(request));
     final created = domain.createProduct(
       id: ProductId('p-${_token()}'),
       actor: actor,
-      name: field<String>(body, 'name'),
-      description: optionalField<String>(body, 'description') ?? '',
-      category: enumField(body, 'category', ProductCategory.values),
-      unit: enumField(body, 'unit', ProductUnit.values),
-      priceDinars: field<int>(body, 'priceDinars'),
-      stockUnits: field<int>(body, 'stockUnits'),
+      name: body.name,
+      description: body.description,
+      category: categoryFromCode(body.category),
+      unit: unitFromCode(body.unit),
+      priceDinars: dinarsOf(body.price),
+      stockUnits: body.stockUnits,
     );
     if (created case Failure(:final error)) return domainProblem(error);
     await store.insertProduct(created.valueOrNull!);
-    return json(201, productJson(created.valueOrNull!));
+    return json(201, productToDto(created.valueOrNull!, ownerView: true).toJson());
   });
 
   Future<Response> changePrice(Request request) => _changeProduct(request, (product, body, actor) {
-    return updatePrice(product, field<int>(body, 'priceDinars'), actor: actor);
+    final price = ChangePriceRequest.fromJson(body).price;
+    return updatePrice(product, dinarsOf(price), actor: actor);
   });
 
   Future<Response> changeStock(Request request) => _changeProduct(request, (product, body, actor) {
-    return updateStock(product, field<int>(body, 'stockUnits'), actor: actor);
+    return updateStock(product, ChangeStockRequest.fromJson(body).stockUnits, actor: actor);
   });
 
   Future<Response> deleteProduct(Request request) => _signedIn(request, (actor) async {
@@ -206,7 +220,7 @@ final class ShopHandlers {
 
   Future<Response> _changeProduct(
     Request request,
-    Result<Product> Function(Product product, Map<String, Object?> body, User actor) change,
+    Result<Product> Function(Product product, JsonMap body, User actor) change,
   ) => _signedIn(request, (actor) async {
     final body = await readObject(request);
     return store.transaction((store) async {
@@ -216,7 +230,7 @@ final class ShopHandlers {
       final changed = change(product, body, actor);
       if (changed case Failure(:final error)) return domainProblem(error);
       await store.updateProduct(changed.valueOrNull!);
-      return json(200, productJson(changed.valueOrNull!));
+      return json(200, productToDto(changed.valueOrNull!, ownerView: true).toJson());
     });
   });
 
@@ -227,7 +241,7 @@ final class ShopHandlers {
     if (actor == null) {
       return problem(
         status: 401,
-        code: 'sign_in_required',
+        code: ErrorCodes.signInRequired,
         title: 'Nepoznat korisnik: pošalji postojeći id u zaglavlju $actorHeader',
       );
     }

@@ -1,3 +1,4 @@
+import 'package:contract/contract.dart';
 import 'package:relic/relic.dart';
 
 import 'handlers.dart';
@@ -6,7 +7,7 @@ import 'http.dart';
 /// Sve rute servera na jednom mestu.
 Handler buildHandler(ShopHandlers handlers) {
   final router = RelicRouter()
-    ..get('/health', (request) => Response.ok(body: Body.fromString('ok')))
+    ..get(ApiPaths.health, (request) => Response.ok(body: Body.fromString('ok')))
     // Javno, bez prijave.
     ..get('/producers', handlers.producers)
     ..get('/products', handlers.products)
@@ -23,7 +24,7 @@ Handler buildHandler(ShopHandlers handlers) {
     ..post('/products/:id/stock', handlers.changeStock)
     ..delete('/products/:id', handlers.deleteProduct)
     ..fallback = respondWith(
-      (request) => problem(status: 404, code: 'not_found', title: 'Nepostojeća ruta'),
+      (request) => problem(status: 404, code: ErrorCodes.routeNotFound, title: 'Nepostojeća ruta'),
     );
   return const Pipeline()
       .addMiddleware(logRequests())

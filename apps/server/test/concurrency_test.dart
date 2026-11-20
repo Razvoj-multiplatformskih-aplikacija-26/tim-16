@@ -4,6 +4,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:contract/contract.dart' show actorHeader;
 import 'package:http/http.dart' as http;
 import 'package:postgres/postgres.dart';
 import 'package:relic/relic.dart' show IOAdapter, RelicServer;
@@ -32,7 +33,7 @@ Future<void> applyMigrations(Session session) async {
 
 Future<http.Response> post(String path, String user, [Map<String, Object?>? body]) => http.post(
   base.replace(path: path),
-  headers: {'Content-Type': 'application/json', 'X-User-Id': user},
+  headers: {'Content-Type': 'application/json', actorHeader: user},
   body: body == null ? null : jsonEncode(body),
 );
 
@@ -90,7 +91,7 @@ void main() {
     expect(answers.map((answer) => answer.statusCode), unorderedEquals([201, 409]));
     final lost = bodyOf(answers.firstWhere((answer) => answer.statusCode == 409));
     expect(lost['code'], 'quantity_exceeds_stock');
-    expect((lost['details']! as Map)['available'], 0);
+    expect((lost['params']! as Map)['available'], 0);
     expect(await stockOf('p10'), 0);
   });
 

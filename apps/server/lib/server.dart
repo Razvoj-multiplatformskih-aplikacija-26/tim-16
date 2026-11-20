@@ -6,4 +6,4 @@ export 'src/handlers.dart';
 export 'src/http.dart';
 export 'src/problems.dart';
 export 'src/shop_store.dart';
-export 'src/wire.dart';
+export 'src/paging.dart';

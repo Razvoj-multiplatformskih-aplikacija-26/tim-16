@@ -37,6 +37,7 @@ services:
       dockerfile: apps/server/Dockerfile
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-svezko}:${POSTGRES_PASSWORD:?Prvo kopiraj .env.example u .env}@db:5432/${POSTGRES_DB:-svezko}?sslmode=disable
+      NOVO_PRAVILO_NAJVISE_PO_STAVCI: ${NOVO_PRAVILO_NAJVISE_PO_STAVCI:-}
     ports:
       - "${SERVER_PORT:-8080}:8080"
     depends_on:
