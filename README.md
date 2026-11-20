@@ -116,6 +116,27 @@ Javne stranice biće organizovane tako da pretraživači mogu da pronađu i inde
 
 Svi delovi sistema koriste zajednički domenski paket, koji sadrži modele i poslovna pravila. Server čuva podatke i ponovo proverava poslovna pravila prilikom obrade zahteva.
 
+## Ugovor između klijenata i servera
+
+Zahtevi, odgovori i greške su opisani jednim paketom, [`packages/contract`](packages/contract),
+koji ne uvozi domen, Flutter ni `dart:io`. Prevod između ugovora i domena (i za
+greške) je na jednom mestu, u [`packages/mapping`](packages/mapping); koriste ga
+server i oba klijenta (`HttpShopRepository` u `packages/blocs`).
+
+Pokretanje klijenata sa pravim serverom (`docker compose up --build`):
+
+```
+flutter run --dart-define=SERVER_URL=http://10.0.2.2:8080          # apps/mobile, Android emulator
+flutter run -d windows --dart-define=SERVER_URL=http://localhost:8080   # apps/backoffice
+```
+
+Bez `SERVER_URL` aplikacije rade sa lažnim podacima kao u KT1.
+
+**Stara verzija aplikacije:** u `.env` postavi `NOVO_PRAVILO_NAJVISE_PO_STAVCI=1`
+i ponovo pokreni server. Server tada odbija stavku veću od 1 kodom koji
+aplikacija ne poznaje; aplikacija ne pada i pokazuje opštu poruku bez tehničkog
+teksta, a podaci se osveže.
+
 ## Stanje projekta
 
 Projekat predstavlja platformu za prodaju lokalnih poljoprivrednih i domaćih proizvoda. Detaljan opis domena, implementacija funkcionalnosti i prateća dokumentacija razvijaju se tokom semestra.

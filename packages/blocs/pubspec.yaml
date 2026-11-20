@@ -11,9 +11,14 @@ environment:
 # Add regular dependencies here.
 dependencies:
   bloc: ^8.1.4
+  contract:
+    path: ../contract
   domain:
     path: ../domain
   equatable: ^3.0.0
+  http: 1.6.0
+  mapping:
+    path: ../mapping
   # path: ^1.9.0
 
 dev_dependencies:

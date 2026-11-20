@@ -26,7 +26,7 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
   /// Server je odbio akciju pravilom jer je klijent radio nad zastarelim
   /// podacima. Korisnik vidi razlog (ista poruka kao kada pravilo proveri
   /// klijent), a ekran se ponovo učita sa podacima po kojima je server odlučio.
-  Future<void> _reloadAfterRejection(DomainError error, Emitter<ShopState> emit) async {
+  Future<void> _reloadAfter(ShopFeedback feedback, Emitter<ShopState> emit) async {
     final latest = state;
     if (latest is! ShopLoaded) return;
     try {
@@ -35,11 +35,11 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
       emit(latest.copyWith(
         products: products.where((p) => p.published).toList(),
         orders: orders,
-        feedback: RuleViolated(error),
+        feedback: feedback,
       ));
     } catch (_) {
       // Ponovno učitavanje nije uspelo, ali razlog odbijanja i dalje važi.
-      emit(latest.copyWith(feedback: RuleViolated(error)));
+      emit(latest.copyWith(feedback: feedback));
     }
   }
 
@@ -67,10 +67,14 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
       case Failure(:final error):
         emit(current.copyWith(feedback: RuleViolated(error)));
       case Success(:final value):
+        final Product saved;
         try {
-          await managementRepository.addProduct(value);
+          saved = await managementRepository.addProduct(value);
         } on ActionRejected catch (rejection) {
-          await _reloadAfterRejection(rejection.error, emit);
+          await _reloadAfter(RuleViolated(rejection.error), emit);
+          return;
+        } on ActionRefused catch (refusal) {
+          await _reloadAfter(RefusedByServer(refusal.code), emit);
           return;
         } catch (_) {
           emit(current.copyWith(feedback: const ActionFailed()));
@@ -78,7 +82,7 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
         }
         final latest = state;
         if (latest is! ShopLoaded) return;
-        emit(latest.copyWith(products: [value, ...latest.products], feedback: ProductAdded(value)));
+        emit(latest.copyWith(products: [saved, ...latest.products], feedback: ProductAdded(saved)));
     }
   }
 
@@ -95,10 +99,14 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
       case Failure(:final error):
         emit(current.copyWith(feedback: RuleViolated(error)));
       case Success(:final value):
+        final Order saved;
         try {
-          await repository.saveOrder(value);
+          saved = await repository.saveOrder(value);
         } on ActionRejected catch (rejection) {
-          await _reloadAfterRejection(rejection.error, emit);
+          await _reloadAfter(RuleViolated(rejection.error), emit);
+          return;
+        } on ActionRefused catch (refusal) {
+          await _reloadAfter(RefusedByServer(refusal.code), emit);
           return;
         } catch (_) {
           emit(current.copyWith(feedback: const ActionFailed()));
@@ -107,8 +115,8 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
         final latest = state;
         if (latest is! ShopLoaded) return;
         emit(latest.copyWith(
-          orders: [for (final item in latest.orders) item.id == value.id ? value : item],
-          feedback: OrderStatusChanged(value),
+          orders: [for (final item in latest.orders) item.id == saved.id ? saved : item],
+          feedback: OrderStatusChanged(saved),
         ));
     }
   }
@@ -126,7 +134,10 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
     try {
       await managementRepository.deleteProduct(event.productId);
     } on ActionRejected catch (rejection) {
-      await _reloadAfterRejection(rejection.error, emit);
+      await _reloadAfter(RuleViolated(rejection.error), emit);
+      return;
+    } on ActionRefused catch (refusal) {
+      await _reloadAfter(RefusedByServer(refusal.code), emit);
       return;
     } catch (_) {
       emit(current.copyWith(feedback: const ActionFailed()));
@@ -194,10 +205,14 @@ Future<void> _onLoad(
     case Failure(:final error):
       emit(current.copyWith(feedback: RuleViolated(error)));
     case Success(:final value):
+      final Order saved;
       try {
-        await repository.saveOrder(value);
+        saved = await repository.saveOrder(value);
       } on ActionRejected catch (rejection) {
-        await _reloadAfterRejection(rejection.error, emit);
+        await _reloadAfter(RuleViolated(rejection.error), emit);
+        return;
+      } on ActionRefused catch (refusal) {
+        await _reloadAfter(RefusedByServer(refusal.code), emit);
         return;
       } catch (_) {
         emit(current.copyWith(feedback: const ActionFailed()));
@@ -207,8 +222,8 @@ Future<void> _onLoad(
       if (latest is! ShopLoaded) return;
       emit(
         latest.copyWith(
-          orders: [value, ...latest.orders],
-          feedback: OrderPlaced(value),
+          orders: [saved, ...latest.orders],
+          feedback: OrderPlaced(saved),
         ),
       );
   }
@@ -234,10 +249,14 @@ Future<void> _onLoad(
       case Failure(:final error):
         emit(current.copyWith(feedback: RuleViolated(error)));
       case Success(:final value):
+        final Order saved;
         try {
-          await repository.saveOrder(value);
+          saved = await repository.saveOrder(value);
         } on ActionRejected catch (rejection) {
-          await _reloadAfterRejection(rejection.error, emit);
+          await _reloadAfter(RuleViolated(rejection.error), emit);
+          return;
+        } on ActionRefused catch (refusal) {
+          await _reloadAfter(RefusedByServer(refusal.code), emit);
           return;
         } catch (_) {
           emit(current.copyWith(feedback: const ActionFailed()));
@@ -247,8 +266,8 @@ Future<void> _onLoad(
         if (latest is! ShopLoaded) return;
         emit(
           latest.copyWith(
-            orders: [for (final o in latest.orders) o.id == value.id ? value : o],
-            feedback: OrderCancelled(value),
+            orders: [for (final o in latest.orders) o.id == saved.id ? saved : o],
+            feedback: OrderCancelled(saved),
           ),
         );
     }

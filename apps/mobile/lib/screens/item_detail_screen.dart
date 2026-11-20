@@ -3,7 +3,6 @@ import 'package:domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../text/domain_errors.dart';
 import '../text/labels.dart';
 import '../theme/colors.dart';
 import '../widgets/app_button.dart';

@@ -55,6 +55,14 @@ final class RuleViolated extends ShopFeedback {
   List<Object?> get props => [error];
 }
 
+final class RefusedByServer extends ShopFeedback {
+  const RefusedByServer(this.code);
+  final String code;
+
+  @override
+  List<Object?> get props => [code];
+}
+
 /// Pravila su prošla, ali repozitorijum nije uspeo da sačuva (mreža...).
 final class ActionFailed extends ShopFeedback {
   const ActionFailed();

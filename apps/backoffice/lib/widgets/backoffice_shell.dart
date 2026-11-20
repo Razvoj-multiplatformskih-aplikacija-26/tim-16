@@ -22,7 +22,20 @@ class BackofficeShell extends StatelessWidget {
     final location = GoRouterState.of(context).uri.path;
     final selected = _destinations.indexWhere((item) => item.path == location ||
         (item.path == '/my-products' && location.startsWith('/products/')));
-    return Scaffold(
+    return BlocListener<ShopBloc, ShopState>(
+      listenWhen: (previous, current) =>
+          current is ShopLoaded &&
+          current.feedback != null &&
+          current.feedback != (previous is ShopLoaded ? previous.feedback : null),
+      listener: (context, state) {
+        final feedback = state is ShopLoaded ? state.feedback : null;
+        final message = feedback == null ? null : errorMessageOf(feedback);
+        if (message == null) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
+      },
+      child: Scaffold(
       body: Row(children: [
         NavigationRail(
           extended: MediaQuery.sizeOf(context).width >= 900,
@@ -49,6 +62,7 @@ class BackofficeShell extends StatelessWidget {
         const VerticalDivider(width: 1),
         Expanded(child: child),
       ]),
+      ),
     );
   }
 }

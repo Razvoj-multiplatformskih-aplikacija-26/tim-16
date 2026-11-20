@@ -7,13 +7,14 @@ abstract interface class ShopRepository {
   Future<List<Order>> loadOrders();
 
   /// Čuva novu porudžbinu ili izmenjenu postojeću (isti id).
-  Future<void> saveOrder(Order order);
+  Future<Order> saveOrder(Order order);
 }
 
 /// Optional repository capability used by backoffice clients.
 abstract interface class ProductManagementRepository {
   Future<void> deleteProduct(ProductId productId);
-  Future<void> addProduct(Product product);
+
+  Future<Product> addProduct(Product product);
 }
 
 /// Repozitorijum baca kada server odbije akciju domenskim pravilom.
@@ -28,4 +29,23 @@ final class ActionRejected implements Exception {
 
   @override
   String toString() => 'ActionRejected($error)';
+}
+
+final class ActionRefused implements Exception {
+  const ActionRefused(this.code, {this.params = const {}});
+
+  final String code;
+  final Map<String, Object?> params;
+
+  @override
+  String toString() => 'ActionRefused($code, $params)';
+}
+
+final class RepositoryUnavailable implements Exception {
+  const RepositoryUnavailable(this.reason);
+
+  final String reason;
+
+  @override
+  String toString() => 'RepositoryUnavailable($reason)';
 }

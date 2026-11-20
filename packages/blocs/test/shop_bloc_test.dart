@@ -71,9 +71,10 @@ class FakeRepo implements ShopRepository {
   Future<List<Order>> loadOrders() async => orders;
 
   @override
-  Future<void> saveOrder(Order order) async {
+  Future<Order> saveOrder(Order order) async {
     if (failSave) throw Exception('mreža');
     saved.add(order);
+    return order;
   }
 }
 
@@ -102,7 +103,7 @@ class LateClientRepo implements ShopRepository {
   Future<List<Order>> loadOrders() async => orders;
 
   @override
-  Future<void> saveOrder(Order order) async {
+  Future<Order> saveOrder(Order order) async {
     products = serverProducts;
     orders = serverOrders;
     throw ActionRejected(rejection);

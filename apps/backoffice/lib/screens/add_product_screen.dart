@@ -40,14 +40,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
             const SnackBar(content: Text('Proizvod je dodat u ponudu.')),
           );
           context.go('/my-products');
-        case RuleViolated(:final error):
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(_domainMessage(error))),
-          );
-        case ActionFailed():
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Čuvanje nije uspelo. Pokušajte ponovo.')),
-          );
         default:
           break;
       }
@@ -160,13 +152,5 @@ class _AddProductScreenState extends State<AddProductScreen> {
     ProductUnit.piece => 'komad',
     ProductUnit.liter => 'litar',
     ProductUnit.jar => 'tegla',
-  };
-
-  String _domainMessage(DomainError error) => switch (error) {
-    TextLengthInvalid(:final kind, :final min, :final max) when kind == TextKind.productName => 'Naziv mora imati između $min i $max znakova.',
-    PriceOutOfRange(:final min, :final max) => 'Cena mora biti između $min i $max RSD.',
-    StockOutOfRange(:final max) => 'Zaliha mora biti između 0 i $max.',
-    NotAuthorized() => 'Nemate pravo da dodate proizvod.',
-    _ => 'Podaci za proizvod nisu ispravni.',
   };
 }

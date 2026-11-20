@@ -341,7 +341,7 @@ class FakeShopRepository implements ShopRepository {
   }
 
   @override
-  Future<void> saveOrder(Order order) async {
+  Future<Order> saveOrder(Order order) async {
     await _simulateRequest(latency ~/ 2);
     final index = _orders.indexWhere((o) => o.id == order.id);
     if (index == -1) {
@@ -362,5 +362,6 @@ class FakeShopRepository implements ShopRepository {
       }
       _orders[index] = order;
     }
+    return order;
   }
 }

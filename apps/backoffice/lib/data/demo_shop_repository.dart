@@ -48,7 +48,7 @@ class DemoShopRepository implements ShopRepository, ProductManagementRepository 
   }
 
   @override
-  Future<void> saveOrder(Order order) async {
+  Future<Order> saveOrder(Order order) async {
     _throwIfRequested();
     final index = _orders.indexWhere((existing) => existing.id == order.id);
     if (index == -1) {
@@ -69,6 +69,7 @@ class DemoShopRepository implements ShopRepository, ProductManagementRepository 
       }
       _orders[index] = order;
     }
+    return order;
   }
 
   @override
@@ -77,8 +78,9 @@ class DemoShopRepository implements ShopRepository, ProductManagementRepository 
   }
 
   @override
-  Future<void> addProduct(Product product) async {
+  Future<Product> addProduct(Product product) async {
     _products.insert(0, product);
+    return product;
   }
 
   static User _producer(String id, String name) =>
