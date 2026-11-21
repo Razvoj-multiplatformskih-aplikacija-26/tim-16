@@ -1,6 +1,7 @@
 abstract final class ApiPaths {
   static const health = '/health';
-
+  static const sessions='/sessions';
+  static const currentSession='/sessions/current';
   static const producers = '/producers';
   static const products = '/products';
   static String product(String id) => '/products/$id';
@@ -13,5 +14,7 @@ abstract final class ApiPaths {
   static String productPrice(String id) => '/products/$id/price';
   static String productStock(String id) => '/products/$id/stock';
 }
-
+abstract final class ApiCookies {
+  static const session = 'svezko_session';
+}
 const actorHeader = 'X-User-Id';

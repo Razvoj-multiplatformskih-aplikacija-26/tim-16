@@ -57,6 +57,8 @@ abstract final class ErrorCodes {
   static const unsupportedMediaType = 'unsupported_media_type';
   static const payloadTooLarge = 'payload_too_large';
   static const signInRequired = 'sign_in_required';
+  static const sessionExpired = 'session_expired';
+  static const invalidCredentials = 'invalid_credentials';
   static const serverError = 'server_error';
 
   static const unreadableResponse = 'unreadable_response';

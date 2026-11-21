@@ -166,4 +166,13 @@ void main() {
       expect(orderRequestLinesOf(request).single.quantity, 2);
     });
   });
+
+  test('prijava prolazi kroz mrežu i vraća istog korisnika', () {
+    const user = User(id: UserId('u-buyer-1'), fullName: 'Marko Petrović', role: UserRole.buyer);
+    final sent = SessionDto(user: userToDto(user), expiresAt: DateTime.utc(2026, 11, 22, 8), token: 't');
+    final received = SessionDto.fromJson(overWire(sent.toJson()));
+    expect(userFromDto(received.user), user);
+    expect(received.expiresAt, DateTime.utc(2026, 11, 22, 8));
+    expect(received.token, 't');
+  });
 }
