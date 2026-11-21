@@ -130,7 +130,7 @@ flutter run --dart-define=SERVER_URL=http://10.0.2.2:8080          # apps/mobile
 flutter run -d windows --dart-define=SERVER_URL=http://localhost:8080   # apps/backoffice
 ```
 
-Bez `SERVER_URL` aplikacije rade sa lažnim podacima kao u KT1.
+
 
 **Stara verzija aplikacije:** u `.env` postavi `NOVO_PRAVILO_NAJVISE_PO_STAVCI=1`
 i ponovo pokreni server. Server tada odbija stavku veću od 1 kodom koji
@@ -140,3 +140,20 @@ teksta, a podaci se osveže.
 ## Stanje projekta
 
 Projekat predstavlja platformu za prodaju lokalnih poljoprivrednih i domaćih proizvoda. Detaljan opis domena, implementacija funkcionalnosti i prateća dokumentacija razvijaju se tokom semestra.
+## Pokretanje iz čistog klona
+
+    cp .env.example .env
+    docker compose up --build          
+    flutter pub get                    
+    cd apps/mobile && flutter run      
+    cd apps/backoffice && flutter run -d windows
+    cd apps/backoffice && flutter run -d chrome --web-port 8081
+
+Lažni podaci (kao u KT1): `flutter run --dart-define=FAKE=true`
+
+## Demo nalozi (lozinka za sve: `svezko-demo`, iz DEMO_PASSWORD)
+
+| Uloga | Korisničko ime | Aplikacija |
+|---|---|---|
+| Kupac | kupac1, kupac2 | mobilna |
+| Proizvođač | proizvodjac1, proizvodjac2, proizvodjac9 | backoffice |
