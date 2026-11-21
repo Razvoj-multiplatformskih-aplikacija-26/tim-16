@@ -8,14 +8,14 @@
 // pa se može pokretati više puta. Sa `--zadrzi` porudžbina ostaje.
 import 'dart:convert';
 import 'dart:io';
+import 'prijava.dart';
 
 import 'package:http/http.dart' as http;
 
-final base = Uri.parse(Platform.environment['SERVER_URL'] ?? 'http://localhost:8080');
 
-Future<http.Response> post(String path, String user, Map<String, Object?> body) => http.post(
+Future<http.Response> post(String path, String user, Map<String, Object?> body) async => http.post(
   base.replace(path: path),
-  headers: {'Content-Type': 'application/json', 'X-User-Id': user},
+  headers:  await headersAs(user),
   body: jsonEncode(body),
 );
 
@@ -29,6 +29,9 @@ Future<http.Response> order(String buyer) => post('/orders', buyer, {
 Future<void> main(List<String> args) async {
   final reset = await post('/products/p10/stock', 'pr-9', {'stockUnits': 1});
   stdout.writeln('Zaliha p10 vraćena na 1 → ${reset.statusCode}\n');
+
+  await tokenOf('u-buyer-1');
+  await tokenOf('u-buyer-2');
 
   // Oba zahteva kreću pre nego što bilo koji dobije odgovor.
   final answers = await Future.wait([order('u-buyer-1'), order('u-buyer-2')]);

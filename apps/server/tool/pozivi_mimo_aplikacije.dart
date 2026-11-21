@@ -9,10 +9,10 @@
 //     -d '{"priceDinars": 0}'
 import 'dart:convert';
 import 'dart:io';
+import 'prijava.dart';
 
 import 'package:http/http.dart' as http;
 
-final base = Uri.parse(Platform.environment['SERVER_URL'] ?? 'http://localhost:8080');
 
 Future<void> main() async {
   await call(
@@ -67,14 +67,14 @@ Future<void> main() async {
 }
 
 Future<void> call(
-  String title,
-  String method,
-  String path, {
-  String? user,
-  Map<String, Object?>? body,
-}) async {
+    String title,
+    String method,
+    String path, {
+      String? user,
+      Map<String, Object?>? body,
+    }) async {
   final request = http.Request(method, base.replace(path: path))
-    ..headers.addAll({'Content-Type': 'application/json', 'X-User-Id': ?user});
+    ..headers.addAll(await headersAs(user));
   if (body != null) request.body = jsonEncode(body);
   final response = await http.Response.fromStream(await request.send());
   stdout
