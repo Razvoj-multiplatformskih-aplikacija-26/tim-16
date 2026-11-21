@@ -16,3 +16,4 @@ export 'src/identifiers.dart';
 export 'src/result.dart';
 export 'src/text_rules.dart';
 export 'src/user.dart';
+export 'src/access_policy.dart';
