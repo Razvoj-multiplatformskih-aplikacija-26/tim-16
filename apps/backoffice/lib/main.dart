@@ -16,7 +16,7 @@ void main() {
   );
   final ShopRepository repository = serverUrl.isEmpty
       ? DemoShopRepository()
-      : HttpShopRepository(baseUrl: Uri.parse(serverUrl), user: producer);
+      : HttpShopRepository(ApiClient(baseUrl: Uri.parse(serverUrl)));
 
   runApp(
     RepositoryProvider<ShopRepository>.value(

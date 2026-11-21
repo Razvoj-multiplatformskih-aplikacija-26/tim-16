@@ -49,3 +49,11 @@ final class RepositoryUnavailable implements Exception {
   @override
   String toString() => 'RepositoryUnavailable($reason)';
 }
+
+
+final class SessionEnded implements Exception {
+  const SessionEnded();
+
+  @override
+  String toString() => 'SessionEnded';
+}

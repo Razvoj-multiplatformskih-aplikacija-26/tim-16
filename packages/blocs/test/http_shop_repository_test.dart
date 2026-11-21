@@ -29,6 +29,19 @@ http.Response jsonResponse(int status, Object? body) => http.Response.bytes(
 
 JsonMap page(List<Object?> items, {String? next}) => {'items': items, 'nextCursor': next};
 
+final base = Uri.parse('http://server');
+
+/// Repozitorijum nad lažnim serverom. keepsSessionInCookie: false, da test
+/// radi isto i kada se pokrene u pregledaču (dart test -p chrome).
+HttpShopRepository repositoryOver(
+    MockClient client, {
+      int pageSize = PageRequest.defaultLimit,
+      TokenStore? tokens,
+    }) => HttpShopRepository(
+  ApiClient(baseUrl: base, httpClient: client, tokens: tokens, keepsSessionInCookie: false),
+  pageSize: pageSize,
+);
+
 MockClient server({required http.Response Function(http.Request request) onOrder}) => MockClient((request) async {
   return switch ((request.method, request.url.path)) {
     ('GET', ApiPaths.producers) => jsonResponse(200, [
@@ -51,14 +64,10 @@ Future<ShopBloc> loadedBloc(ShopRepository repository) async {
 }
 
 void main() {
-  final base = Uri.parse('http://server');
-
   group('put jedne greške do poruke', () {
     test('server odbije pravilom: korisnik vidi istu poruku kao kada pravilo proveri klijent', () async {
-      final repository = HttpShopRepository(
-        baseUrl: base,
-        user: buyer,
-        client: server(
+      final repository = repositoryOver(
+        server(
           onOrder: (_) => jsonResponse(409, problemOf(const QuantityExceedsStock(requested: 3, available: 1)).toJson()),
         ),
       );
@@ -76,10 +85,8 @@ void main() {
     });
 
     test('granica u poruci je ona sa servera', () async {
-      final repository = HttpShopRepository(
-        baseUrl: base,
-        user: buyer,
-        client: server(onOrder: (_) => jsonResponse(409, problemOf(const TooManyActiveOrders(3)).toJson())),
+      final repository = repositoryOver(
+        server(onOrder: (_) => jsonResponse(409, problemOf(const TooManyActiveOrders(3)).toJson())),
       );
       final bloc = await loadedBloc(repository);
 
@@ -92,10 +99,8 @@ void main() {
 
     test('uspeh: porudžbina u stanju ima id koji je dodelio server', () async {
       late JsonMap sent;
-      final repository = HttpShopRepository(
-        baseUrl: base,
-        user: buyer,
-        client: server(
+      final repository = repositoryOver(
+        server(
           onOrder: (request) {
             sent = asObject(jsonDecode(request.body));
             return jsonResponse(201, {
@@ -132,10 +137,8 @@ void main() {
 
   group('stara verzija aplikacije ne pada', () {
     test('pravilo koje aplikacija ne poznaje: opšta poruka, bez tehničkog teksta', () async {
-      final repository = HttpShopRepository(
-        baseUrl: base,
-        user: buyer,
-        client: server(
+      final repository = repositoryOver(
+        server(
           onOrder: (_) => jsonResponse(
             422,
             const ProblemDto(
@@ -202,10 +205,8 @@ void main() {
       final newerStatus = {...order, 'id': 'o-2', 'status': {'code': 'ready_for_pickup'}};
       final newerCategory = {...productToDto(honey()).toJson(), 'id': 'p9', 'category': 'mushrooms'};
 
-      final repository = HttpShopRepository(
-        baseUrl: base,
-        user: buyer,
-        client: MockClient((request) async => switch (request.url.path) {
+      final repository = repositoryOver(
+        MockClient((request) async => switch (request.url.path) {
           ApiPaths.orders => jsonResponse(200, page([order, newerStatus])),
           _ => jsonResponse(200, page([productToDto(honey()).toJson(), newerCategory])),
         }),
@@ -220,16 +221,14 @@ void main() {
   group('straničenje', () {
     test('klijent traži listu deo po deo dok server vraća kursor', () async {
       final requested = <Map<String, String>>[];
-      final repository = HttpShopRepository(
-        baseUrl: base,
-        user: buyer,
-        pageSize: 1,
-        client: MockClient((request) async {
+      final repository = repositoryOver(
+        MockClient((request) async {
           requested.add(request.url.queryParameters);
           final first = request.url.queryParameters['cursor'] == null;
           final product = {...productToDto(honey()).toJson(), 'id': first ? 'p1' : 'p2'};
           return jsonResponse(200, page([product], next: first ? 'sledeca' : null));
         }),
+        pageSize: 1,
       );
 
       final products = await repository.loadProducts();
@@ -239,6 +238,40 @@ void main() {
         {'limit': '1'},
         {'limit': '1', 'cursor': 'sledeca'},
       ]);
+    });
+  });
+
+  group('prijava', () {
+    test('repozitorijum šalje token iz TokenStore-a, a ne id korisnika', () async {
+      final tokens = MemoryTokenStore();
+      await tokens.write('abc');
+      late http.Request seen;
+      final repository = repositoryOver(
+        MockClient((request) async {
+          seen = request;
+          return jsonResponse(200, page(const []));
+        }),
+        tokens: tokens,
+      );
+
+      await repository.loadOrders();
+
+      expect(seen.headers['Authorization'], 'Bearer abc');
+      expect(seen.headers.containsKey('X-User-Id'), isFalse);
+    });
+
+    test('istekla prijava: SessionEnded i javljanje na expirations', () async {
+      final api = ApiClient(
+        baseUrl: base,
+        keepsSessionInCookie: false,
+        httpClient: MockClient(
+              (_) async => jsonResponse(401, const ProblemDto(status: 401, code: ErrorCodes.sessionExpired).toJson()),
+        ),
+      );
+      final expired = api.expirations.first;
+
+      await expectLater(HttpShopRepository(api).loadOrders(), throwsA(isA<SessionEnded>()));
+      await expired;
     });
   });
 }

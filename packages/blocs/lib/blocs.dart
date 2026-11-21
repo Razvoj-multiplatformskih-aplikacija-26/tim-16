@@ -6,3 +6,7 @@ export 'src/bloc/shop_state.dart';
 export 'src/bloc/shop_event.dart';
 export 'src/bloc/shop_bloc.dart';
 export 'src/text/messages.dart';
+export 'src/repository/api_client.dart';
+export 'src/repository/http_session_repository.dart';
+export 'src/repository/session_repository.dart';
+export 'src/repository/token_store.dart';

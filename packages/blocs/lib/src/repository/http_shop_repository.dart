@@ -5,20 +5,13 @@ import 'package:domain/domain.dart';
 import 'package:http/http.dart' as http;
 import 'package:mapping/mapping.dart';
 
+import 'api_client.dart'; // IZMENA: nov import
 import 'shop_repository.dart';
 
 final class HttpShopRepository implements ShopRepository, ProductManagementRepository {
-  HttpShopRepository({
-    required this.baseUrl,
-    required this.user,
-    http.Client? client,
-    this.pageSize = PageRequest.defaultLimit,
-  }) : _client = client ?? http.Client();
+  HttpShopRepository(this._api, {this.pageSize = PageRequest.defaultLimit});
 
-  final Uri baseUrl;
-
-  final User user;
-  final http.Client _client;
+  final ApiClient _api;
 
   final int pageSize;
 
@@ -74,7 +67,7 @@ final class HttpShopRepository implements ShopRepository, ProductManagementRepos
 
   @override
   Future<void> deleteProduct(ProductId productId) async {
-    _bodyOf(await _send(() => _client.delete(_uri(ApiPaths.product(productId.value)), headers: _headers)));
+    _bodyOf(await _api.delete(ApiPaths.product(productId.value))); // IZMENA
   }
 
   Future<List<T>> _allPages<T>(String path, T Function(JsonMap json) decode) async {
@@ -84,7 +77,7 @@ final class HttpShopRepository implements ShopRepository, ProductManagementRepos
     do {
       final page = PageDto.fromJson(
         asObject(await _get(path, query: PageRequest(limit: pageSize, cursor: cursor).toQuery())),
-        (json) => json,
+            (json) => json,
       );
       result.addAll(_readEach(page.items, decode));
       cursor = page.nextCursor;
@@ -104,27 +97,13 @@ final class HttpShopRepository implements ShopRepository, ProductManagementRepos
     return result;
   }
 
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    actorHeader: user.id.value,
-  };
 
-  Uri _uri(String path, [Map<String, String>? query]) =>
-      baseUrl.replace(path: path, queryParameters: query == null || query.isEmpty ? null : query);
 
   Future<Object?> _get(String path, {Map<String, String>? query}) async =>
-      _bodyOf(await _send(() => _client.get(_uri(path, query), headers: _headers)));
+      _bodyOf(await _api.get(path, query: query));
 
   Future<Object?> _post(String path, JsonMap body) async =>
-      _bodyOf(await _send(() => _client.post(_uri(path), headers: _headers, body: jsonEncode(body))));
-
-  Future<http.Response> _send(Future<http.Response> Function() request) async {
-    try {
-      return await request();
-    } on http.ClientException catch (error) {
-      throw RepositoryUnavailable('Mreža: ${error.message}');
-    }
-  }
+      _bodyOf(await _api.post(path, body: body));
 
   Object? _bodyOf(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {

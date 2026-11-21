@@ -17,4 +17,3 @@ abstract final class ApiPaths {
 abstract final class ApiCookies {
   static const session = 'svezko_session';
 }
-const actorHeader = 'X-User-Id';

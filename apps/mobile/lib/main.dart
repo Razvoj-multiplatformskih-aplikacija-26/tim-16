@@ -12,7 +12,7 @@ void main() {
   // sa SecondFakeShopRepository() iz mock_dataV2.dart.
   final ShopRepository repository = serverUrl.isEmpty
       ? FakeShopRepository()
-      : HttpShopRepository(baseUrl: Uri.parse(serverUrl), user: demoBuyer);
+      : HttpShopRepository(ApiClient(baseUrl: Uri.parse(serverUrl)));
 
   runApp(
     // Repozitorijum je dostupan i ekranu (dugme za izazivanje greške).
