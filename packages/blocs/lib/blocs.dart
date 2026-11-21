@@ -12,3 +12,4 @@ export 'src/repository/session_repository.dart';
 export 'src/repository/token_store.dart';
 export 'src/login_form/login_form_bloc.dart';
 export 'src/session/session_bloc.dart';
+export 'src/repository/fake_session_repository.dart';
