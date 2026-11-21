@@ -1,5 +1,7 @@
 
+import 'package:blocs/blocs.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme/colors.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -9,7 +11,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
-
+    final user = (context.watch<SessionBloc>().state as SignedIn).user;
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
 
@@ -51,7 +53,7 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 14),
 
                   Text(
-                    'Marko Petrović',
+                    user.fullName,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -123,7 +125,7 @@ class ProfileScreen extends StatelessWidget {
                   _ProfileInfoTile(
                     icon: Icons.person_outline,
                     title: 'Ime i prezime',
-                    value: 'Marko Petrović',
+                    value: user.fullName,
                   ),
                   const Divider(height: 1, indent: 48),
                   _ProfileInfoTile(
@@ -217,15 +219,9 @@ class ProfileScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Funkcionalnost odjave biće dodata kasnije.',
-                      ),
-                    ),
-                  );
-                },
+                // Odjava briše token sa uređaja (i kolačić na serveru);
+                // SessionGate tada prikazuje ekran za prijavu.
+                  onPressed: () => context.read<SessionBloc>().add(const SessionLogOutRequested()),
                 icon: const Icon(Icons.logout),
                 label: const Text('Odjavi se'),
                 style: OutlinedButton.styleFrom(

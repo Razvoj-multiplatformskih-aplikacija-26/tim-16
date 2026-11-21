@@ -1,8 +1,8 @@
+import 'package:blocs/blocs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:blocs/blocs.dart';
 import '../data/demo_shop_repository.dart';
 
 class BackofficeShell extends StatelessWidget {
@@ -24,7 +24,7 @@ class BackofficeShell extends StatelessWidget {
         (item.path == '/my-products' && location.startsWith('/products/')));
     return BlocListener<ShopBloc, ShopState>(
       listenWhen: (previous, current) =>
-          current is ShopLoaded &&
+      current is ShopLoaded &&
           current.feedback != null &&
           current.feedback != (previous is ShopLoaded ? previous.feedback : null),
       listener: (context, state) {
@@ -36,32 +36,56 @@ class BackofficeShell extends StatelessWidget {
           ..showSnackBar(SnackBar(content: Text(message)));
       },
       child: Scaffold(
-      body: Row(children: [
-        NavigationRail(
-          extended: MediaQuery.sizeOf(context).width >= 900,
-          selectedIndex: selected < 0 ? 0 : selected,
-          onDestinationSelected: (index) => context.go(_destinations[index].path),
-          leading: const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Text('SVEŽKO', style: TextStyle(fontWeight: FontWeight.bold))),
-          trailing: PopupMenuButton<_DebugAction>(
-            icon: const Icon(Icons.bug_report, color: Colors.red),
-            tooltip: 'Izazovi grešku (test)',
-            onSelected: (action) {
-              final repository = context.read<ShopRepository>();
-              if (repository is DemoShopRepository) repository.forceError();
-              if (action == _DebugAction.load) {
-                context.read<ShopBloc>().add(const LoadShopDataEvent());
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: _DebugAction.load, child: Text('Greška pri učitavanju')),
-              PopupMenuItem(value: _DebugAction.save, child: Text('Greška pri sledećem čuvanju')),
+        body: Row(children: [
+          NavigationRail(
+            extended: MediaQuery.sizeOf(context).width >= 900,
+            selectedIndex: selected < 0 ? 0 : selected,
+            onDestinationSelected: (index) => context.go(_destinations[index].path),
+            leading: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Text('SVEŽKO', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            // Ispod menija: dugme za grešku (KT1), a na dnu odjava.
+            trailing: Expanded(
+              child: Column(
+                children: [
+                  PopupMenuButton<_DebugAction>(
+                    icon: const Icon(Icons.bug_report, color: Colors.red),
+                    tooltip: 'Izazovi grešku (test)',
+                    onSelected: (action) {
+                      final repository = context.read<ShopRepository>();
+                      if (repository is DemoShopRepository) repository.forceError();
+                      if (action == _DebugAction.load) {
+                        context.read<ShopBloc>().add(const LoadShopDataEvent());
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: _DebugAction.load, child: Text('Greška pri učitavanju')),
+                      PopupMenuItem(value: _DebugAction.save, child: Text('Greška pri sledećem čuvanju')),
+                    ],
+                  ),
+                  const Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: IconButton(
+                      tooltip: 'Odjavi se',
+                      icon: const Icon(Icons.logout),
+                      // Odjava briše token (i kolačić u pregledaču);
+                      // SessionGate tada prikazuje ekran za prijavu.
+                      onPressed: () => context.read<SessionBloc>().add(const SessionLogOutRequested()),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            destinations: [
+              for (final item in _destinations)
+                NavigationRailDestination(icon: Icon(item.icon), label: Text(item.label)),
             ],
           ),
-          destinations: [for (final item in _destinations) NavigationRailDestination(icon: Icon(item.icon), label: Text(item.label))],
-        ),
-        const VerticalDivider(width: 1),
-        Expanded(child: child),
-      ]),
+          const VerticalDivider(width: 1),
+          Expanded(child: child),
+        ]),
       ),
     );
   }
