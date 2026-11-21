@@ -3,8 +3,8 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
+import 'support.dart';
 
-import 'package:contract/contract.dart' show actorHeader;
 import 'package:http/http.dart' as http;
 import 'package:postgres/postgres.dart';
 import 'package:relic/relic.dart' show IOAdapter, RelicServer;
@@ -21,19 +21,11 @@ late Pool<void> database;
 late RelicServer server;
 late Uri base;
 
-Future<void> applyMigrations(Session session) async {
-  final files = Directory('migrations').listSync().whereType<File>().where((file) => file.path.endsWith('.sql')).toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
-  for (final file in files) {
-    final text = file.readAsStringSync();
-    final up = text.substring(text.indexOf('-- migrate:up'), text.indexOf('-- migrate:down'));
-    await session.execute(up, queryMode: QueryMode.simple);
-  }
-}
+
 
 Future<http.Response> post(String path, String user, [Map<String, Object?>? body]) => http.post(
   base.replace(path: path),
-  headers: {'Content-Type': 'application/json', actorHeader: user},
+  headers: {'Content-Type': 'application/json', ...authAs(user)},
   body: body == null ? null : jsonEncode(body),
 );
 
@@ -74,7 +66,9 @@ void main() {
     }
 
     server = RelicServer(() => IOAdapter.bind(InternetAddress.loopbackIPv4, port: 0));
-    await server.mountAndStart(buildHandler(ShopHandlers(store: ShopStore(database))));
+    await server.mountAndStart(
+      buildHandler(ShopHandlers(store: ShopStore(database)), testSessions(database), corsOrigins: const [testOrigin]),
+    );
     base = Uri.parse('http://localhost:${server.port}');
   });
 

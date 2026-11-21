@@ -3,6 +3,7 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
+import 'support.dart';
 
 import 'package:contract/contract.dart';
 import 'package:domain/domain.dart';
@@ -17,23 +18,21 @@ late Pool<void> database;
 late RelicServer server;
 late Uri base;
 
-Future<void> applyMigrations(Session session) async {
-  final files = Directory('migrations').listSync().whereType<File>().where((file) => file.path.endsWith('.sql')).toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
-  for (final file in files) {
-    final text = file.readAsStringSync();
-    final up = text.substring(text.indexOf('-- migrate:up'), text.indexOf('-- migrate:down'));
-    await session.execute(up, queryMode: QueryMode.simple);
-  }
-}
+
 
 Future<http.Response> get(String path, {String? user, Map<String, String>? query}) =>
-    http.get(base.replace(path: path, queryParameters: query), headers: {actorHeader: ?user});
+    http.get(base.replace(path: path, queryParameters: query), headers: authAs(user));
 
 Future<http.Response> post(String path, String user, JsonMap body) => http.post(
   base.replace(path: path),
-  headers: {'Content-Type': 'application/json', actorHeader: user},
+  headers: {'Content-Type': 'application/json', ...authAs(user)},
   body: jsonEncode(body),
+);
+
+Future<http.Response> logIn(String username, String password) => http.post(
+  base.replace(path: ApiPaths.sessions),
+  headers: {'Content-Type': 'application/json'},
+  body: jsonEncode(LoginDto(username: username, password: password).toJson()),
 );
 
 JsonMap bodyOf(http.Response response) => asObject(jsonDecode(response.body));
@@ -50,14 +49,108 @@ void main() {
     database = Pool<void>.withUrl(url.replace(path: '/svezko_test_api').toString());
     await applyMigrations(database);
 
+    await seedDemoPasswords(database, demoPassword: 'test-lozinka');
+
     server = RelicServer(() => IOAdapter.bind(InternetAddress.loopbackIPv4, port: 0));
-    await server.mountAndStart(buildHandler(ShopHandlers(store: ShopStore(database), lineLimit: 3)));
+    await server.mountAndStart(
+      buildHandler(
+        ShopHandlers(store: ShopStore(database), lineLimit: 3),
+        testSessions(database),
+        corsOrigins: const [testOrigin],
+      ),
+    );
     base = Uri.parse('http://localhost:${server.port}');
   });
 
   tearDownAll(() async {
     await server.close();
     await database.close();
+  });
+
+  group('prijava', () {
+    test('tačna lozinka daje prijavu za pravog korisnika', () async {
+      final response = await logIn('kupac1', 'test-lozinka');
+      expect(response.statusCode, 201);
+      final session = SessionDto.fromJson(bodyOf(response));
+      expect(userFromDto(session.user).id, const UserId('u-buyer-1'));
+      expect(session.token, isNotNull);
+
+      final current = await http.get(
+        base.replace(path: ApiPaths.currentSession),
+        headers: {'Authorization': 'Bearer ${session.token}'},
+      );
+      expect(current.statusCode, 200);
+    });
+
+    test('pogrešna lozinka i nepostojeći nalog daju isti odgovor', () async {
+      final wrong = await logIn('kupac1', 'pogresna');
+      final unknown = await logIn('niko', 'test-lozinka');
+      expect(wrong.statusCode, 401);
+      expect(bodyOf(wrong)['code'], ErrorCodes.invalidCredentials);
+      expect(unknown.statusCode, 401);
+      expect(bodyOf(unknown)['code'], ErrorCodes.invalidCredentials);
+    });
+
+    test('u bazi je samo Argon2id heš lozinke', () async {
+      final rows = await database.execute('SELECT password_hash FROM users WHERE login IS NOT NULL');
+      expect(rows.map((row) => row[0]! as String), everyElement(startsWith(r'$argon2id$')));
+    });
+
+    test('server ne veruje zaglavlju X-User-Id', () async {
+      final response = await http.get(base.replace(path: ApiPaths.orders), headers: {'X-User-Id': 'pr-1'});
+      expect(response.statusCode, 401);
+      expect(bodyOf(response)['code'], ErrorCodes.signInRequired);
+    });
+
+    test('token potpisan tuđom tajnom ne važi', () async {
+      final forged = tokenFor('pr-1', secret: 'neka-druga-tajna-0123456789abcdef-xyz');
+      final response = await http.get(base.replace(path: ApiPaths.orders), headers: {'Authorization': 'Bearer $forged'});
+      expect(response.statusCode, 401);
+    });
+
+    test('istekla prijava se odbija kodom session_expired', () async {
+      final expired = tokenFor('u-buyer-1', validFor: const Duration(minutes: -1));
+      final response = await http.get(base.replace(path: ApiPaths.orders), headers: {'Authorization': 'Bearer $expired'});
+      expect(response.statusCode, 401);
+      expect(bodyOf(response)['code'], ErrorCodes.sessionExpired);
+    });
+  });
+
+  group('uloge na serveru', () {
+    test('kupac ne može da prihvati porudžbinu ni pozivom mimo aplikacije', () async {
+      final response = await post(ApiPaths.orderStatus('o-1001'), 'u-buyer-1', {'status': 'accepted'});
+      expect(response.statusCode, 403);
+      expect(bodyOf(response)['code'], ErrorCodes.notAuthorized);
+    });
+
+    test('kupac ne može da menja cenu proizvoda', () async {
+      final response = await post(ApiPaths.productPrice('p1'), 'u-buyer-1', ChangePriceRequest(const MoneyDto(200)).toJson());
+      expect(response.statusCode, 403);
+      expect(bodyOf(response)['code'], ErrorCodes.notAuthorized);
+    });
+
+    test('kupac ne može da otkaže tuđu porudžbinu', () async {
+      // o-1007 je porudžbina kupca u-buyer-2.
+      final response = await post(ApiPaths.orderCancellation('o-1007'), 'u-buyer-1', const {});
+      expect(response.statusCode, 404);
+      expect(bodyOf(response)['code'], ErrorCodes.orderNotFound);
+    });
+  });
+
+  group('pregledač', () {
+    test('backoffice-ovo poreklo dobija CORS zaglavlja', () async {
+      final response = await http.get(base.replace(path: ApiPaths.products), headers: {'Origin': testOrigin});
+      expect(response.headers['access-control-allow-origin'], testOrigin);
+    });
+
+    test('upis sa tuđeg porekla se odbija', () async {
+      final response = await http.post(
+        base.replace(path: ApiPaths.sessions),
+        headers: {'Origin': 'http://zlonamerni.example', 'Content-Type': 'application/json'},
+        body: jsonEncode(const LoginDto(username: 'kupac1', password: 'test-lozinka').toJson()),
+      );
+      expect(response.statusCode, 403);
+    });
   });
 
   group('straničenje', () {

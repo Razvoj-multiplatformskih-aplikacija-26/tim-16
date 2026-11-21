@@ -1,4 +1,3 @@
-export 'src/actor.dart';
 export 'src/app.dart';
 export 'src/config.dart';
 export 'src/env_file.dart';
@@ -11,3 +10,4 @@ export 'src/demo_accounts.dart';
 export 'src/passwords.dart';
 export 'src/account_store.dart';
 export 'src/sessions.dart';
+export 'src/cors.dart';

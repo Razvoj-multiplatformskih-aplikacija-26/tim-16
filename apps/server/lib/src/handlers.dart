@@ -6,7 +6,7 @@ import 'package:domain/domain.dart' as domain;
 import 'package:mapping/mapping.dart';
 import 'package:relic/relic.dart' hide Result;
 
-import 'actor.dart';
+import 'sessions.dart';
 import 'http.dart';
 import 'paging.dart';
 import 'problems.dart';
@@ -236,17 +236,10 @@ final class ShopHandlers {
 
   // Pomoćno.
 
-  Future<Response> _signedIn(Request request, Future<Response> Function(User actor) handle) async {
-    final actor = await actorOf(request, store);
-    if (actor == null) {
-      return problem(
-        status: 401,
-        code: ErrorCodes.signInRequired,
-        title: 'Nepoznat korisnik: pošalji postojeći id u zaglavlju $actorHeader',
-      );
-    }
-    return handle(actor);
-  }
+  /// Korisnika je već proverio middleware `signedIn` (app.dart) i stavio ga
+  /// u `currentSession`. Handler nikada ne čita korisnika iz zahteva.
+  Future<Response> _signedIn(Request request, Future<Response> Function(User actor) handle) =>
+      handle(currentSession.get(request).user);
 
   String _token() => [
     for (var i = 0; i < 6; i++) _random.nextInt(256).toRadixString(16).padLeft(2, '0'),
