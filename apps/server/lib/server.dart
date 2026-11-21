@@ -7,3 +7,7 @@ export 'src/http.dart';
 export 'src/problems.dart';
 export 'src/shop_store.dart';
 export 'src/paging.dart';
+export 'src/demo_accounts.dart';
+export 'src/passwords.dart';
+export 'src/account_store.dart';
+export 'src/sessions.dart';
